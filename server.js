@@ -181,9 +181,9 @@ function nextBombHolder(room) {
 function queueGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'countdown';
-  room.game = {type, phase:'countdown', startsAt:Date.now() + 3200, activeIds:[], winnerIds:[], round:0};
+  room.game = {type, phase:'countdown', startsAt:Date.now() + 1000, activeIds:[], winnerIds:[], round:0};
   emitRoom(room);
-  room.timer = setTimeout(() => startGame(room, type), 3200);
+  room.timer = setTimeout(() => startGame(room, type), 1000);
 }
 
 function finishCardChoices(room) {

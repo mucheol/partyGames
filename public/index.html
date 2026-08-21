@@ -342,10 +342,8 @@ function render() {
   const me = room.players.find(player => player.id === playerId);
   const isHost = room.hostId === playerId;
   if (room.status === 'countdown') {
-    const count = Math.max(1, Math.ceil((room.game.startsAt - Date.now()) / 1000));
-    panel.innerHTML = `<div class="gameStage"><p class="gameHint">곧 시작합니다</p><strong class="countdownNumber">${count}</strong></div>`;
+    panel.innerHTML = '<div class="gameStage"><strong class="countdownNumber">게임 시작!</strong></div>';
     addAbortControl(isHost);
-    countdownTimer = setTimeout(render, 150);
     return;
   }
   if (room.status === 'choosing') {
