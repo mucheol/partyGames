@@ -119,8 +119,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .stockCard strong {display:block; font-size:15px; margin-bottom:3px;}
 .stockMeta {font-size:11px; color:#777;}
 .stockPrice {display:block; font-size:18px; margin:8px 0 4px;}
-.stockChange.up {color:#d93025;}
-.stockChange.down {color:#1769d2;}
+.stockChange.up, .stockProfit.up {color:#d93025;}
+.stockChange.down, .stockProfit.down {color:#1769d2;}
+.holdingBadge {display:inline-block; font-size:11px; color:#fff; margin-top:6px; padding:3px 7px; border-radius:10px; background:#7655f5;}
+.stockProfit {display:block; font-family:NotoSansB, sans-serif; font-size:12px; margin-top:5px;}
 .stockChart {display:block; width:100%; height:32px; margin-top:6px;}
 .stockWaiting {font-size:12px; color:#666; text-align:center; margin:10px 0;}
 .tradeDialog label {display:block; margin-bottom:8px;}
@@ -208,8 +210,9 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 <dialog id="tradeDialog" class="helpDialog tradeDialog">
   <h2 id="tradeStockName">종목 거래</h2>
   <p id="tradeStockStatus"></p>
-  <label for="tradeAmount">거래 금액(만원)</label>
-  <input id="tradeAmount" type="number" min="1" step="1" inputmode="numeric" value="1000">
+  <label for="tradeQuantity">거래 수량(주)</label>
+  <input id="tradeQuantity" type="number" min="1" step="1" inputmode="numeric" value="1">
+  <p id="tradeEstimate">예상 주문금액</p>
   <div class="tradeActions"><button id="buyStockButton" type="button">매수</button><button id="sellStockButton" class="sellButton" type="button">매도</button></div>
   <button id="closeTradeButton" class="abortButton" type="button">닫기</button>
 </dialog>
@@ -299,7 +302,7 @@ const gameDescriptions = {
   character:['돼지 술래잡기', '돼지가 참가자들의 화면을 무작위로 오갑니다.\n마지막에 돼지가 나타난 1~3명이 당첨됩니다.'],
   bomb:['폭탄 돌리기', '내 화면에 폭탄이 왔을 때 다음 사람에게 넘기세요.\n제한 시간이 끝날 때 폭탄을 가진 사람이 당첨됩니다.'],
   cards:['100 카드 승부', '1~100 카드에서 원하는 만큼 계속 추가로 받을 수 있습니다.\n합계가 100을 넘으면 탈락하고, 남은 전원이 그만 받으면 높은 순서로 순위가 결정됩니다.'],
-  stocks:['랜덤 주식 투자', '1억원으로 매 판 무작위 선정된 한국·미국 6종목을 거래합니다.\n평가자산의 2배까지 투자할 수 있으며 4일 뒤 최종 자산 순위를 공개합니다. 실제 투자와 무관한 랜덤 게임입니다.']
+  stocks:['랜덤 주식 투자', '1억원 현금으로 매 판 무작위 선정된 한국·미국 6종목을 거래합니다.\n보유 현금 안에서 주 단위로 사고팔며 4일 뒤 최종 자산 순위를 공개합니다. 실제 투자와 무관한 랜덤 게임입니다.']
 };
 
 const won = value => `${Math.round(value).toLocaleString('ko-KR')}원`;
@@ -310,6 +313,13 @@ function stockChart(stock) {
   const points = values.map((value, index) => `${index * 100 / Math.max(1, values.length - 1)},${30 - (value - minimum) / range * 26}`).join(' ');
   const color = stock.change >= 0 ? '#d93025' : '#1769d2';
   return `<svg class="stockChart" viewBox="0 0 100 32" role="img" aria-label="${escapeHtml(stock.name)} 가격 차트"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function updateTradeEstimate() {
+  const stock = room?.game?.markets?.find(item => item.symbol === selectedStockSymbol);
+  if (!stock) return;
+  const quantity = Math.max(0, Number(document.getElementById('tradeQuantity').value) || 0);
+  document.getElementById('tradeEstimate').textContent = `${quantity.toLocaleString('ko-KR')}주 · 예상 주문금액 ${won(stock.price * quantity)}`;
 }
 
 function addGameInfoButtons() {
@@ -386,14 +396,22 @@ function render() {
       const equity = room.game.myCash + holdingsValue;
       const ready = room.game.stockReadyIds.includes(playerId);
       const readyNames = room.players.filter(player => room.game.stockReadyIds.includes(player.id)).map(player => escapeHtml(player.nickname)).join(', ');
-      const markets = room.game.markets.map(stock => `<button class="stockCard" type="button" data-stock="${stock.symbol}" ${room.game.phase !== 'trade' || ready ? 'disabled' : ''}><strong>${escapeHtml(stock.name)}</strong><span class="stockMeta">${stock.country === 'KR' ? '한국' : '미국'} · ${escapeHtml(stock.sector)}</span><span class="stockPrice">${won(stock.price)}</span><span class="stockChange ${stock.change >= 0 ? 'up' : 'down'}">${stock.change >= 0 ? '▲' : '▼'} ${Math.abs(stock.change).toFixed(2)}%</span>${stockChart(stock)}</button>`).join('');
-      panel.innerHTML = `<div class="stockDashboard"><h2>${room.game.day}일차 ${room.game.phase === 'market' ? '장 마감' : '투자'}</h2><p class="gameHint">실제 시세와 무관한 완전 무작위 게임 · 최대 2배 투자</p><div class="stockSummary"><span>총 자산<strong>${won(equity)}</strong></span><span>현금<strong>${won(room.game.myCash)}</strong></span><span>투자금<strong>${won(holdingsValue)}</strong></span></div><div class="stockGrid">${markets}</div>${room.game.phase === 'market' ? `<p class="suspense">${room.game.day === 4 ? '최종 결산 중!' : '시장이 움직였습니다!'}</p>` : `<button id="stockReadyButton" type="button">${ready ? '투자 완료 취소' : '투자 완료'}</button><p class="stockWaiting">완료 ${room.game.stockReadyIds.length}/${room.players.length}${readyNames ? ` · ${readyNames}` : ''}</p>`}</div>`;
+      const markets = room.game.markets.map(stock => {
+        const shares = room.game.myHoldings[stock.symbol] || 0;
+        const previousPrice = stock.price / (1 + stock.change / 100);
+        const dailyProfit = shares * (stock.price - previousPrice);
+        return `<button class="stockCard" type="button" data-stock="${stock.symbol}" ${room.game.phase !== 'trade' || ready ? 'disabled' : ''}><strong>${escapeHtml(stock.name)}</strong><span class="stockMeta">${stock.country === 'KR' ? '한국' : '미국'} · ${escapeHtml(stock.sector)}</span>${shares ? `<span class="holdingBadge">보유중 · ${shares.toLocaleString('ko-KR')}주</span>` : ''}<span class="stockPrice">${won(stock.price)}</span><span class="stockChange ${stock.change >= 0 ? 'up' : 'down'}">${stock.change >= 0 ? '▲' : '▼'} ${Math.abs(stock.change).toFixed(2)}%</span>${room.game.phase === 'market' && shares ? `<span class="stockProfit ${dailyProfit >= 0 ? 'up' : 'down'}">오늘 손익 ${dailyProfit >= 0 ? '+' : ''}${won(dailyProfit)}</span>` : ''}${stockChart(stock)}</button>`;
+      }).join('');
+      panel.innerHTML = `<div class="stockDashboard"><h2>${room.game.day}일차 ${room.game.phase === 'market' ? '장 마감' : '투자'}</h2><p class="gameHint">실제 시세와 무관한 완전 무작위 게임 · 보유 현금 내 거래</p><div class="stockSummary"><span>총 자산<strong>${won(equity)}</strong></span><span>현금<strong>${won(room.game.myCash)}</strong></span><span>투자금<strong>${won(holdingsValue)}</strong></span></div><div class="stockGrid">${markets}</div>${room.game.phase === 'market' ? `<p class="suspense">${room.game.day === 4 ? '최종 결산 중!' : '시장이 움직였습니다!'}</p>` : `<button id="stockReadyButton" type="button">${ready ? '투자 완료 취소' : '투자 완료'}</button><p class="stockWaiting">완료 ${room.game.stockReadyIds.length}/${room.players.length}${readyNames ? ` · ${readyNames}` : ''}</p>`}</div>`;
       panel.querySelectorAll('[data-stock]').forEach(button => button.onclick = () => {
         selectedStockSymbol = button.dataset.stock;
         const stock = room.game.markets.find(item => item.symbol === selectedStockSymbol);
-        const held = (room.game.myHoldings[selectedStockSymbol] || 0) * stock.price;
+        const shares = room.game.myHoldings[selectedStockSymbol] || 0;
+        const held = shares * stock.price;
         document.getElementById('tradeStockName').textContent = stock.name;
-        document.getElementById('tradeStockStatus').textContent = `현재가 ${won(stock.price)} · 보유 ${won(held)}`;
+        document.getElementById('tradeStockStatus').textContent = `보유 현금 ${won(room.game.myCash)}\n현재가 ${won(stock.price)}\n보유 수량 ${shares.toLocaleString('ko-KR')}주 · 평가금액 ${won(held)}`;
+        document.getElementById('tradeQuantity').value = 1;
+        updateTradeEstimate();
         document.getElementById('tradeDialog').showModal();
       });
       document.getElementById('stockReadyButton')?.addEventListener('click', () => send('stocks:ready', {ready:!ready}).catch(error => alert(error.message)));
@@ -525,10 +543,11 @@ document.getElementById('closeHelpButton').onclick = () => helpDialog.close();
 document.getElementById('closeGameInfoButton').onclick = () => document.getElementById('gameInfoDialog').close();
 panel.querySelectorAll('[data-game-info]').forEach(button => button.onclick = openGameInfo);
 document.getElementById('closeTradeButton').onclick = () => document.getElementById('tradeDialog').close();
+document.getElementById('tradeQuantity').oninput = updateTradeEstimate;
 document.querySelectorAll('#buyStockButton, #sellStockButton').forEach(button => button.onclick = async () => {
-  const amount = Number(document.getElementById('tradeAmount').value) * 10_000;
+  const quantity = Number(document.getElementById('tradeQuantity').value);
   try {
-    await send('stocks:trade', {symbol:selectedStockSymbol, side:button.id === 'buyStockButton' ? 'buy' : 'sell', amount});
+    await send('stocks:trade', {symbol:selectedStockSymbol, side:button.id === 'buyStockButton' ? 'buy' : 'sell', quantity});
     document.getElementById('tradeDialog').close();
   } catch (error) { document.getElementById('tradeStockStatus').textContent = error.message; }
 });

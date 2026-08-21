@@ -381,24 +381,22 @@ io.on('connection', socket => {
     done({ok:true});
   });
 
-  socket.on('stocks:trade', ({symbol, side, amount}, done) => {
+  socket.on('stocks:trade', ({symbol, side, quantity}, done) => {
     const room = rooms.get(socket.data.code);
     const playerId = socket.data.playerId;
     if (!room || room.status !== 'playing' || room.game?.type !== 'stocks' || room.game.phase !== 'trade' || room.game.stockReady.has(playerId)) return done({error:'지금은 거래할 수 없습니다.'});
     const stock = room.game.markets.find(item => item.symbol === symbol);
-    amount = Number(amount);
-    if (!stock || !['buy', 'sell'].includes(side) || !Number.isFinite(amount) || amount < 10_000) return done({error:'거래 금액은 1만원 이상 입력해주세요.'});
+    quantity = Number(quantity);
+    if (!stock || !['buy', 'sell'].includes(side) || !Number.isSafeInteger(quantity) || quantity < 1) return done({error:'거래 수량은 1주 이상 입력해주세요.'});
     const holdings = room.game.holdingsById[playerId];
+    const amount = stock.price * quantity;
     if (side === 'buy') {
-      const equity = stockValue(room, playerId);
-      const exposure = room.game.markets.reduce((sum, item) => sum + (holdings[item.symbol] || 0) * item.price, 0);
-      if (equity <= 0 || exposure + amount > equity * 2 + 1) return done({error:'총 투자금은 평가자산의 2배를 넘을 수 없습니다.'});
-      holdings[symbol] = (holdings[symbol] || 0) + amount / stock.price;
+      if (amount > room.game.cashById[playerId]) return done({error:'보유 현금보다 많이 살 수 없습니다.'});
+      holdings[symbol] = (holdings[symbol] || 0) + quantity;
       room.game.cashById[playerId] -= amount;
     } else {
-      const heldValue = (holdings[symbol] || 0) * stock.price;
-      if (amount > heldValue + 1) return done({error:'보유 금액보다 많이 팔 수 없습니다.'});
-      holdings[symbol] = Math.max(0, (holdings[symbol] || 0) - amount / stock.price);
+      if (quantity > (holdings[symbol] || 0)) return done({error:'보유 주식보다 많이 팔 수 없습니다.'});
+      holdings[symbol] -= quantity;
       room.game.cashById[playerId] += amount;
     }
     emitRoom(room);
