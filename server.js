@@ -18,6 +18,7 @@ const httpServer = createServer((request, response) => {
 const io = new Server(httpServer);
 const rooms = new Map();
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const gameTypes = ['character', 'bomb', 'cards'];
 const pigScenes = {
   peek:['pig-peek.png', 'pig-spy.png', 'pig-detective.png', 'pig-ghost.png'],
   pop:['pig-mascot.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-dizzy.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-magician.png', 'pig-king.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'],
@@ -29,7 +30,8 @@ function gameSettings(type, input = {}) {
     const winnerCount = ['1', '2', '3', 'random'].includes(String(input.winnerCount)) ? String(input.winnerCount) : 'random';
     return {winnerCount};
   }
-  return {duration:input.duration === '30-60' ? '30-60' : '15-30', stackPenalty:Boolean(input.stackPenalty)};
+  if (type === 'bomb') return {duration:input.duration === '30-60' ? '30-60' : '15-30', stackPenalty:Boolean(input.stackPenalty)};
+  return {};
 }
 
 function roomCode() {
@@ -56,13 +58,13 @@ function blockedNickname(value) {
   return typeof value === 'string' && value.normalize('NFKC').replace(/[^\p{L}]/gu, '').includes('무철');
 }
 
-function publicRoom(room) {
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
+function publicRoom(room, viewerId) {
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, myCards:room.game.cardsById?.[viewerId] || [], myChoice:room.game.choices?.[viewerId] ?? null, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, rankings:room.game.phase === 'ranking' ? room.game.rankings : []} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
 function emitRoom(room) {
-  io.to(room.code).emit('room:updated', publicRoom(room));
+  room.players.forEach(player => player.socketId && io.to(player.socketId).emit('room:updated', publicRoom(room, player.id)));
 }
 
 function characterStep(room, stepsLeft) {
@@ -119,6 +121,28 @@ function queueGame(room, type) {
   room.timer = setTimeout(() => startGame(room, type), 3200);
 }
 
+function finishCardChoices(room) {
+  if (room.game?.type !== 'cards' || room.game.phase !== 'decide' || Object.keys(room.game.choices).length < room.players.size) return;
+  room.players.forEach(player => {
+    if (room.game.choices[player.id]) room.game.cardsById[player.id].push(room.game.deck.pop());
+  });
+  room.game.phase = 'reveal';
+  room.game.revealAt = Date.now() + 3000;
+  emitRoom(room);
+  room.timer = setTimeout(() => {
+    room.game.rankings = [...room.players.values()].map(player => {
+      const cards = room.game.cardsById[player.id];
+      const total = cards.reduce((sum, card) => sum + card, 0);
+      return {id:player.id, nickname:player.nickname, cards, total, busted:total > 100};
+    }).sort((a, b) => Number(a.busted) - Number(b.busted) || (a.busted ? a.total - b.total : b.total - a.total));
+    const winner = room.game.rankings.find(result => !result.busted);
+    room.game.winnerIds = winner ? [winner.id] : [];
+    room.game.phase = 'ranking';
+    room.status = 'result';
+    emitRoom(room);
+  }, 3000);
+}
+
 function startGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'playing';
@@ -126,7 +150,7 @@ function startGame(room, type) {
   emitRoom(room);
   if (type === 'character') {
     room.timer = setTimeout(() => characterStep(room, 12 + Math.floor(Math.random() * 5)), 900);
-  } else {
+  } else if (type === 'bomb') {
     nextBombHolder(room);
     emitRoom(room);
     room.timer = setTimeout(() => {
@@ -136,6 +160,13 @@ function startGame(room, type) {
       room.game.winnerIds = [room.game.holderId];
       emitRoom(room);
     }, room.settings.duration === '30-60' ? 30_000 + Math.floor(Math.random() * 30_001) : 15_000 + Math.floor(Math.random() * 15_001));
+  } else {
+    room.game.phase = 'decide';
+    room.game.deck = shuffle(Array.from({length:100}, (_, index) => index + 1));
+    room.game.cardsById = {};
+    room.game.choices = {};
+    room.players.forEach(player => room.game.cardsById[player.id] = [room.game.deck.pop()]);
+    emitRoom(room);
   }
 }
 
@@ -143,14 +174,14 @@ io.on('connection', socket => {
   socket.on('room:create', ({nickname, playerId, gameType, settings}, done) => {
     if (blockedNickname(nickname)) return done({error:'해당 닉네임은 사용할 수 없습니다. 다른 닉네임을 골라주세요.'});
     if (!validNickname(nickname) || typeof playerId !== 'string') return done({error:'닉네임은 1~12자로 입력해주세요.'});
-    if (!['character', 'bomb'].includes(gameType)) return done({error:'게임을 선택해주세요.'});
+    if (!gameTypes.includes(gameType)) return done({error:'게임을 선택해주세요.'});
     const code = roomCode();
     const room = {code, status:'lobby', hostId:playerId, selectedGame:gameType, settings:gameSettings(gameType, settings), players:new Map(), game:null, timer:null};
     room.players.set(playerId, {id:playerId, nickname:nickname.trim(), ready:true, connected:true, penaltyUntil:0, socketId:socket.id});
     rooms.set(code, room);
     socket.join(code);
     socket.data = {code, playerId};
-    done({room:publicRoom(room)});
+    done({room:publicRoom(room, playerId)});
   });
 
   socket.on('room:join', ({code, nickname, playerId}, done) => {
@@ -165,7 +196,7 @@ io.on('connection', socket => {
     room.players.set(playerId, {id:playerId, nickname:nickname.trim(), ready:false, connected:true, penaltyUntil:0, socketId:socket.id});
     socket.join(code);
     socket.data = {code, playerId};
-    done({room:publicRoom(room)});
+    done({room:publicRoom(room, playerId)});
     emitRoom(room);
   });
 
@@ -177,7 +208,7 @@ io.on('connection', socket => {
     player.socketId = socket.id;
     socket.join(room.code);
     socket.data = {code:room.code, playerId};
-    done({room:publicRoom(room)});
+    done({room:publicRoom(room, playerId)});
     emitRoom(room);
   });
 
@@ -218,6 +249,15 @@ io.on('connection', socket => {
     done({ok:true});
   });
 
+  socket.on('cards:choose', ({take}, done) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.status !== 'playing' || room.game?.type !== 'cards' || room.game.phase !== 'decide') return done({error:'지금은 카드를 선택할 수 없습니다.'});
+    if (!(socket.data.playerId in room.game.choices)) room.game.choices[socket.data.playerId] = Boolean(take);
+    emitRoom(room);
+    finishCardChoices(room);
+    done({ok:true});
+  });
+
   socket.on('game:reset', ({mode}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'result') return done({error:'방장만 다시 시작할 수 있습니다.'});
@@ -235,7 +275,7 @@ io.on('connection', socket => {
   socket.on('game:change', ({type, settings}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'choosing') return done({error:'게임을 변경할 수 없습니다.'});
-    if (!['character', 'bomb'].includes(type)) return done({error:'지원하지 않는 게임입니다.'});
+    if (!gameTypes.includes(type)) return done({error:'지원하지 않는 게임입니다.'});
     room.selectedGame = type;
     room.settings = gameSettings(type, settings);
     queueGame(room, type);
@@ -262,6 +302,10 @@ io.on('connection', socket => {
       if (nextHost) { room.hostId = nextHost.id; nextHost.ready = true; }
     }
     if (room.status === 'playing' && room.game?.type === 'bomb' && room.game.holderId === player.id) nextBombHolder(room);
+    if (room.status === 'playing' && room.game?.type === 'cards' && room.game.phase === 'decide' && !(player.id in room.game.choices)) {
+      room.game.choices[player.id] = false;
+      finishCardChoices(room);
+    }
     emitRoom(room);
     const cleanupTimer = setTimeout(() => {
       if ([...room.players.values()].every(candidate => !candidate.connected)) { clearTimeout(room.timer); rooms.delete(room.code); }

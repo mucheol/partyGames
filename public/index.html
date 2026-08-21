@@ -43,6 +43,11 @@ button {width:100%; min-height:52px; font-family:NotoSansB, sans-serif; font-siz
 button:focus-visible {outline:3px solid #222; outline-offset:2px;}
 button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .joinDivider {color:#888; text-align:center; margin:22px 0;}
+.homeGames {margin-top:28px; padding-top:22px; border-top:1px solid #ddd6f5;}
+.homeGames h2 {font-size:17px;}
+.homeGameList {display:flex; flex-direction:column; gap:8px; margin:0; padding:0; list-style:none;}
+.homeGameList li {display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:NotoSansB, sans-serif;}
+.homeGameList button {width:auto; min-height:38px; font-size:12px; padding:0 14px;}
 .message {min-height:18px; font-size:13px; color:#b3261e; margin:14px 0 0;}
 .roomHeader {margin-bottom:20px;}
 .roomHeader p {color:#666; margin:0 0 10px;}
@@ -56,6 +61,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .gameChoice button {display:flex; align-items:center; min-height:104px; text-align:left; padding:14px 18px;}
 .gameChoice strong {display:block; font-size:18px; margin-bottom:4px;}
 .gameChoice span {font-family:NotoSansR, sans-serif; font-size:13px; opacity:.9;}
+.gameChoice .gameInfoButton {min-height:40px; justify-content:center; font-size:13px; color:#7655f5; margin-top:-8px; padding:8px; border:1px solid #7655f5; background:#fff;}
 .gameThumbnail {display:block; flex:0 0 72px; width:72px; height:72px; object-fit:contain; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
 .gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:420px; overflow:hidden; text-align:center; border-radius:16px; background:radial-gradient(circle at 50% 40%, #ffffff 0, #f4ecff 52%, #e4d6ff 100%);}
 .gameStage.penalty {background:radial-gradient(circle at 50% 40%, #ff8c8c 0, #d51f35 68%, #840016 100%); animation:penaltyFlash .2s linear 5;}
@@ -94,6 +100,15 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .helpDialog::backdrop {background:rgba(20,12,35,.72);}
 .helpDialog h2 {margin-top:0;}
 .helpDialog li {margin-bottom:10px;}
+.helpDialog p {line-height:1.6; white-space:pre-line;}
+.cardHand {display:flex; justify-content:center; gap:12px; margin-bottom:22px;}
+.numberCard {display:flex; justify-content:center; align-items:center; width:112px; height:160px; font-family:NotoSansB, sans-serif; font-size:48px; color:#7655f5; border:4px solid #7655f5; border-radius:16px; background:#fff; box-shadow:0 12px 24px rgba(74,47,140,.16);}
+.cardChoices {display:flex; width:100%; gap:10px;}
+.cardChoices button {flex:1; font-size:20px;}
+.rankingList {width:100%; margin:0 0 22px; padding:0; list-style:none;}
+.rankingList li {display:flex; justify-content:space-between; align-items:center; min-height:48px; padding:8px 12px; border-bottom:1px solid #ddd6f5;}
+.rankingList li:first-child {font-family:NotoSansB, sans-serif; color:#7655f5; background:#f4f0ff;}
+.rankingList .busted {color:#b3261e; text-decoration:line-through;}
 @keyframes peekLeft {0%,100% {transform:translate(-135%, -50%) rotate(14deg);} 35%,65% {transform:translate(-78%, -50%) rotate(8deg);}}
 @keyframes peekRight {0%,100% {transform:translate(35%, -50%) rotate(-14deg) scaleX(-1);} 35%,65% {transform:translate(-22%, -50%) rotate(-8deg) scaleX(-1);}}
 @keyframes pigPop {0% {transform:translate(-50%, -30%) scale(0); opacity:0;} 35% {transform:translate(-50%, -50%) scale(1.15); opacity:1;} 80% {transform:translate(-50%, -50%) scale(1);} 100% {transform:translate(-50%, -70%) scale(0); opacity:0;}}
@@ -143,6 +158,14 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
         <button type="submit">게임 선택하기</button>
       </form>
       <p id="message" class="message" role="alert" aria-live="polite"></p>
+      <section class="homeGames" aria-labelledby="homeGamesTitle">
+        <h2 id="homeGamesTitle">게임 둘러보기</h2>
+        <ul class="homeGameList">
+          <li>돼지 술래잡기 <button type="button" data-game-info="character">게임 설명</button></li>
+          <li>폭탄 돌리기 <button type="button" data-game-info="bomb">게임 설명</button></li>
+          <li>100 카드 승부 <button type="button" data-game-info="cards">게임 설명</button></li>
+        </ul>
+      </section>
     </section>
   </main>
   <div class="fullContentWrap"></div>
@@ -154,6 +177,11 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
     <li><strong>폭탄 돌리기:</strong> 폭탄이 보일 때만 넘기세요. 없는 화면을 누르면 1초간 잠깁니다.</li>
   </ul>
   <button id="closeHelpButton" type="button">확인</button>
+</dialog>
+<dialog id="gameInfoDialog" class="helpDialog">
+  <h2 id="gameInfoTitle">게임 설명</h2>
+  <p id="gameInfoText"></p>
+  <button id="closeGameInfoButton" type="button">확인</button>
 </dialog>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -236,6 +264,27 @@ function addAbortControl(isHost) {
   };
 }
 
+const gameDescriptions = {
+  character:['돼지 술래잡기', '돼지가 참가자들의 화면을 무작위로 오갑니다.\n마지막에 돼지가 나타난 1~3명이 당첨됩니다.'],
+  bomb:['폭탄 돌리기', '내 화면에 폭탄이 왔을 때 다음 사람에게 넘기세요.\n제한 시간이 끝날 때 폭탄을 가진 사람이 당첨됩니다.'],
+  cards:['100 카드 승부', '1~100 카드 한 장을 확인하고 추가 카드를 받을지 동시에 선택합니다.\n합계가 100을 넘으면 탈락, 넘지 않은 사람 중 높은 순서로 순위가 결정됩니다.']
+};
+
+function addGameInfoButtons() {
+  panel.querySelectorAll('[data-game], [data-change-game]').forEach(button => {
+    const type = button.dataset.game || button.dataset.changeGame;
+    button.insertAdjacentHTML('afterend', `<button class="gameInfoButton" type="button" data-game-info="${type}">게임 설명</button>`);
+  });
+  panel.querySelectorAll('[data-game-info]').forEach(button => button.onclick = openGameInfo);
+}
+
+function openGameInfo(event) {
+  const [title, description] = gameDescriptions[event.currentTarget.dataset.gameInfo];
+  document.getElementById('gameInfoTitle').textContent = title;
+  document.getElementById('gameInfoText').textContent = description;
+  document.getElementById('gameInfoDialog').showModal();
+}
+
 function render() {
   clearTimeout(countdownTimer);
   const me = room.players.find(player => player.id === playerId);
@@ -248,7 +297,8 @@ function render() {
     return;
   }
   if (room.status === 'choosing') {
-    panel.innerHTML = isHost ? `<h2>다른 게임 선택</h2><p class="lobbyIntro">바로 이어서 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-change-game="character"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>도망치는 돼지의 마지막 선택을 기다려요.</span></button><button type="button" data-change-game="bomb"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>설정한 시간 사이 누군가의 화면에서 폭발해요.</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="suspense">방장이 다른 게임을 고르고 있어요.</p></div>';
+    panel.innerHTML = isHost ? `<h2>다른 게임 선택</h2><p class="lobbyIntro">바로 이어서 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-change-game="character"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>도망치는 돼지의 마지막 선택을 기다려요.</span></button><button type="button" data-change-game="bomb"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>설정한 시간 사이 누군가의 화면에서 폭발해요.</span></button><button type="button" data-change-game="cards"><img class="gameThumbnail" src="/assets/pig-king.png" alt=""><span><strong>100 카드 승부</strong>100을 넘지 않고 가장 높은 합계를 노려요.</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="suspense">방장이 다른 게임을 고르고 있어요.</p></div>';
+    if (isHost) addGameInfoButtons();
     panel.querySelectorAll('[data-change-game]').forEach(button => button.onclick = async () => {
       configureGame(null, button.dataset.changeGame, true);
     });
@@ -267,7 +317,7 @@ function render() {
         panel.innerHTML = `<div class="gameStage"><p class="gameHint">돼지가 누굴 선택할까요?!</p><div class="mascotScene">${active ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="장난꾸러기 돼지">${pair ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="">` : ''}` : ''}</div>${active ? (room.game.move === 'fakeout' ? '<p class="gameHint">당첨…인 줄 알았지?!</p>' : '') : '<p class="gameHint">쉿! 다른 화면을 살펴보세요.</p>'}</div>`;
       }
       addAbortControl(isHost);
-    } else {
+    } else if (room.game.type === 'bomb') {
       const from = room.players.find(player => player.id === room.game.lastPass?.fromId)?.nickname;
       const to = room.players.find(player => player.id === room.game.lastPass?.toId)?.nickname;
       const passNotice = from && to ? `${escapeHtml(from)} → ${escapeHtml(to)}` : '폭탄이 출발했습니다!';
@@ -276,12 +326,24 @@ function render() {
       document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
       if (!holdingBomb) document.getElementById('bombStage').onclick = () => send('game:mistake', {}).catch(() => {});
       addAbortControl(isHost);
+    } else {
+      const cards = room.game.myCards.map(card => `<span class="numberCard">${card}</span>`).join('');
+      const chosen = room.game.myChoice !== null;
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">내 카드</p><div class="cardHand">${cards}</div>${room.game.phase === 'reveal' ? `<p class="suspense">추가 카드를 공개합니다!</p><p class="gameHint">3초 뒤 전체 순위 공개</p>` : `<h2>한 장 더 받을까요?</h2><p class="gameHint">${room.game.choiceCount}/${room.players.length}명 선택 완료</p><div class="cardChoices"><button type="button" data-card-choice="true" ${chosen ? 'disabled' : ''}>O 받기</button><button type="button" data-card-choice="false" ${chosen ? 'disabled' : ''}>X 그대로</button></div>${chosen ? '<p class="gameHint">다른 참가자의 선택을 기다리는 중…</p>' : ''}`}</div>`;
+      panel.querySelectorAll('[data-card-choice]').forEach(button => button.onclick = () => send('cards:choose', {take:button.dataset.cardChoice === 'true'}).catch(() => {}));
+      addAbortControl(isHost);
     }
     return;
   }
   if (room.status === 'result') {
     const winners = room.players.filter(player => room.game.winnerIds.includes(player.id));
     const mine = winners.some(player => player.id === playerId);
+    if (room.game.type === 'cards') {
+      panel.innerHTML = `<div class="gameStage"><h2>전체 순위</h2><ol class="rankingList">${room.game.rankings.map((result, index) => `<li class="${result.busted ? 'busted' : ''}"><span>${index + 1}. ${escapeHtml(result.nickname)} · ${result.cards.join(' + ')}</span><strong>${result.total}${result.busted ? ' 탈락' : '점'}</strong></li>`).join('')}</ol>${isHost ? '<div class="resultActions"><button id="resetButton" type="button">같은 게임 다시 하기</button><button id="changeButton" class="secondaryButton" type="button">다른 게임 하기</button></div>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
+      document.getElementById('resetButton')?.addEventListener('click', () => send('game:reset', {mode:'same'}));
+      document.getElementById('changeButton')?.addEventListener('click', () => send('game:reset', {mode:'choose'}));
+      return;
+    }
     panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<div class="resultActions"><button id="resetButton" type="button">같은 게임 다시 하기</button><button id="changeButton" class="secondaryButton" type="button">다른 게임 하기</button></div>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
     if (room.game.type === 'bomb') panel.querySelector('.gameStage').classList.add('exploded');
     if (mine) panel.querySelector('h2').textContent = room.game.type === 'bomb' ? '펑 당첨!' : '당첨자!';
@@ -315,15 +377,18 @@ async function enter(event, type) {
 }
 
 function chooseGame(nickname) {
-  panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="돼지 술래잡기"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>화면 사이로 도망치는 돼지가 마지막 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="돼지 술래잡기"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>화면 사이로 도망치는 돼지가 마지막 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button><button type="button" data-game="cards" data-title="100 카드 승부"><img class="gameThumbnail" src="/assets/pig-king.png" alt=""><span><strong>100 카드 승부</strong>한 장 더 받을지 선택하고 100에 가장 가까이 가세요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  addGameInfoButtons();
   panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
     configureGame(nickname, button.dataset.game, false);
   });
 }
 
 function configureGame(nickname, type, replay) {
-  const title = type === 'character' ? '돼지 술래잡기' : '폭탄 돌리기';
-  const settings = type === 'character' ? '<label for="winnerCount">당첨자 수</label><select id="winnerCount" name="winnerCount"><option value="random">1~3명 무작위</option><option value="1">1명</option><option value="2">2명</option><option value="3">3명</option></select>' : '<label for="bombDuration">폭발 시간</label><select id="bombDuration" name="duration"><option value="15-30">15~30초</option><option value="30-60">30~60초</option></select><label><input name="stackPenalty" type="checkbox"> 오터치할 때마다 패널티 누적</label>';
+  const title = gameDescriptions[type][0];
+  let settings = '<p>추가 설정 없이 바로 시작합니다.</p>';
+  if (type === 'character') settings = '<label for="winnerCount">당첨자 수</label><select id="winnerCount" name="winnerCount"><option value="random">1~3명 무작위</option><option value="1">1명</option><option value="2">2명</option><option value="3">3명</option></select>';
+  if (type === 'bomb') settings = '<label for="bombDuration">폭발 시간</label><select id="bombDuration" name="duration"><option value="15-30">15~30초</option><option value="30-60">30~60초</option></select><label><input name="stackPenalty" type="checkbox"> 오터치할 때마다 패널티 누적</label>';
   panel.innerHTML = `<h2>${title} 설정</h2><form id="settingsForm"><div class="gameSettings">${settings}</div><button type="submit">${replay ? '이 게임 시작하기' : '이 설정으로 방 만들기'}</button></form><p id="message" class="message" role="alert"></p>`;
   document.getElementById('settingsForm').onsubmit = async event => {
     event.preventDefault();
@@ -385,6 +450,8 @@ soundButton.onclick = () => {
 const helpDialog = document.getElementById('helpDialog');
 document.getElementById('helpButton').onclick = () => helpDialog.showModal();
 document.getElementById('closeHelpButton').onclick = () => helpDialog.close();
+document.getElementById('closeGameInfoButton').onclick = () => document.getElementById('gameInfoDialog').close();
+panel.querySelectorAll('[data-game-info]').forEach(button => button.onclick = openGameInfo);
 document.addEventListener('pointerdown', unlockAudio, {once:true});
 socket.on('room:updated', updatedRoom => {
   if (room?.status === 'playing' && updatedRoom.status === 'result' && updatedRoom.game?.type === 'bomb') {
