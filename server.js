@@ -37,7 +37,7 @@ function validNickname(value) {
 
 function publicRoom(room) {
   const game = room.game ? {type:room.game.type, phase:room.game.phase, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
-  return {code:room.code, status:room.status, hostId:room.hostId, game, players:[...room.players.values()].map(({id, nickname, ready, connected}) => ({id, nickname, ready, connected}))};
+  return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, game, players:[...room.players.values()].map(({id, nickname, ready, connected}) => ({id, nickname, ready, connected}))};
 }
 
 function emitRoom(room) {
@@ -98,10 +98,11 @@ function startGame(room, type) {
 }
 
 io.on('connection', socket => {
-  socket.on('room:create', ({nickname, playerId}, done) => {
+  socket.on('room:create', ({nickname, playerId, gameType}, done) => {
     if (!validNickname(nickname) || typeof playerId !== 'string') return done({error:'닉네임은 1~12자로 입력해주세요.'});
+    if (!['character', 'bomb'].includes(gameType)) return done({error:'게임을 선택해주세요.'});
     const code = roomCode();
-    const room = {code, status:'lobby', hostId:playerId, players:new Map(), game:null, timer:null};
+    const room = {code, status:'lobby', hostId:playerId, selectedGame:gameType, players:new Map(), game:null, timer:null};
     room.players.set(playerId, {id:playerId, nickname:nickname.trim(), ready:true, connected:true, socketId:socket.id});
     rooms.set(code, room);
     socket.join(code);
@@ -150,16 +151,7 @@ io.on('connection', socket => {
     if (!room || room.hostId !== socket.data.playerId) return done({error:'방장만 시작할 수 있습니다.'});
     const players = [...room.players.values()];
     if (players.length < 2 || players.some(player => !player.ready || !player.connected)) return done({error:'2명 이상 접속하고 모두 준비해야 합니다.'});
-    room.status = 'selecting';
-    emitRoom(room);
-    done({ok:true});
-  });
-
-  socket.on('game:select', ({type}, done) => {
-    const room = rooms.get(socket.data.code);
-    if (!room || room.hostId !== socket.data.playerId || room.status !== 'selecting') return done({error:'게임을 선택할 수 없습니다.'});
-    if (!['character', 'bomb'].includes(type)) return done({error:'지원하지 않는 게임입니다.'});
-    startGame(room, type);
+    startGame(room, room.selectedGame);
     done({ok:true});
   });
 
@@ -175,9 +167,7 @@ io.on('connection', socket => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'result') return done({error:'방장만 다시 시작할 수 있습니다.'});
     clearTimeout(room.timer);
-    room.status = 'selecting';
-    room.game = null;
-    emitRoom(room);
+    startGame(room, room.selectedGame);
     done({ok:true});
   });
 

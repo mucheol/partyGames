@@ -51,9 +51,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .playerState.offline {color:#b3261e;}
 .gameStarted {font-family:NotoSansB, sans-serif; font-size:22px; text-align:center; padding:44px 0;}
 .gameChoice {display:flex; flex-direction:column; gap:12px;}
-.gameChoice button {min-height:84px; text-align:left; padding:14px 18px;}
+.gameChoice button {display:flex; align-items:center; min-height:104px; text-align:left; padding:14px 18px;}
 .gameChoice strong {display:block; font-size:18px; margin-bottom:4px;}
 .gameChoice span {font-family:NotoSansR, sans-serif; font-size:13px; opacity:.9;}
+.gameThumbnail {display:flex; justify-content:center; align-items:center; flex:0 0 68px; height:68px; font-size:40px; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
 .gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:360px; text-align:center;}
 .character {font-size:104px; animation:pop .45s ease-in-out infinite alternate; filter:drop-shadow(0 14px 12px rgba(80,45,120,.22));}
 .character.clone::after {content:'👾'; display:inline-block; margin-left:-24px; animation:clone .45s ease-in-out infinite alternate;}
@@ -118,14 +119,6 @@ function escapeHtml(value) {
 function render() {
   const me = room.players.find(player => player.id === playerId);
   const isHost = room.hostId === playerId;
-  if (room.status === 'selecting') {
-    panel.innerHTML = isHost ? `<h2>게임 선택</h2><p class="lobbyIntro">이번에 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-game="character"><strong>👾 캐릭터 추첨</strong><span>캐릭터가 화면을 옮겨 다니다 최종 당첨자를 선택해요.</span></button><button type="button" data-game="bomb"><strong>💣 폭탄 돌리기</strong><span>폭탄을 다음 사람에게 넘기세요. 언제 터질지는 비밀!</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="gameStarted">방장이 게임을 고르고 있어요.</p></div>';
-    panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
-      try { await send('game:select', {type:button.dataset.game}); }
-      catch (error) { document.getElementById('message').textContent = error.message; }
-    });
-    return;
-  }
   if (room.status === 'playing') {
     const active = room.game.activeIds.includes(playerId);
     const holdingBomb = room.game.holderId === playerId;
@@ -140,7 +133,7 @@ function render() {
   if (room.status === 'result') {
     const winners = room.players.filter(player => room.game.winnerIds.includes(player.id));
     const mine = winners.some(player => player.id === playerId);
-    panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<button id="resetButton" type="button">다른 게임 하기</button>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
+    panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<button id="resetButton" type="button">같은 게임 다시 하기</button>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
     document.getElementById('resetButton')?.addEventListener('click', () => send('game:reset', {}));
     return;
   }
@@ -165,7 +158,21 @@ async function enter(event, type) {
   } catch (error) { message.textContent = error.message; }
 }
 
-document.getElementById('createForm').onsubmit = event => enter(event, 'create');
+function chooseGame(nickname) {
+  panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="캐릭터 추첨"><span class="gameThumbnail" aria-hidden="true">👾</span><span><strong>캐릭터 추첨</strong>캐릭터가 화면을 옮겨 다니다 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><span class="gameThumbnail" aria-hidden="true">💣</span><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
+    if (!confirm(`${button.dataset.title} 게임으로 방을 만들까요?`)) return;
+    try {
+      const result = await send('room:create', {nickname, playerId, gameType:button.dataset.game});
+      room = result.room;
+      session = {code:room.code};
+      localStorage.partySession = JSON.stringify(session);
+      render();
+    } catch (error) { document.getElementById('message').textContent = error.message; }
+  });
+}
+
+document.getElementById('createForm').onsubmit = event => { event.preventDefault(); chooseGame(new FormData(event.currentTarget).get('nickname')); };
 document.getElementById('joinForm').onsubmit = event => enter(event, 'join');
 document.getElementById('roomCode').oninput = event => event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
 socket.on('room:updated', updatedRoom => { room = updatedRoom; render(); });
