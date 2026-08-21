@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://party-games-msnu.onrender.com/sitemap.xml

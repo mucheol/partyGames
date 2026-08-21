@@ -1,0 +1,11 @@
+{
+  "name": "다같이 게임즈",
+  "short_name": "다같이 게임즈",
+  "description": "친구들과 즐기는 실시간 모바일 파티 게임",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ff",
+  "theme_color": "#7655f5",
+  "icons": [{"src":"/assets/pig-mascot.png","sizes":"512x512","type":"image/png"}]
+}

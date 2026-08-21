@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="돼지 캐릭터와 함께 즐기는 다같이 게임즈의 여러 파티 게임">
+<meta property="og:image:alt" content="돼지와 무 캐릭터가 함께하는 다같이 게임즈의 여러 파티 게임">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="다같이 게임즈 | 친구들과 즐기는 실시간 파티 게임">
 <meta name="twitter:description" content="방 코드로 바로 모여 네 가지 실시간 파티 게임을 친구들과 즐겨보세요.">
 <meta name="twitter:image" content="https://party-games-msnu.onrender.com/assets/party-games-og.png">
-<meta name="twitter:image:alt" content="돼지 캐릭터와 함께 즐기는 다같이 게임즈의 여러 파티 게임">
+<meta name="twitter:image:alt" content="돼지와 무 캐릭터가 함께하는 다같이 게임즈의 여러 파티 게임">
 <link rel="canonical" href="https://party-games-msnu.onrender.com/">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="icon" type="image/png" href="/assets/pig-mascot.png">
@@ -39,33 +39,43 @@
 <style>
 * {box-sizing:border-box;}
 [hidden] {display:none!important;}
-body {min-width:320px; margin:0; background:#f5f2ff;}
+body {min-width:320px; margin:0; background:#f4f0ff;}
 button, input {font:inherit;}
 .skipNav {position:absolute; left:-9999px; top:0; width:1px; height:1px; overflow:hidden;}
 .skipNav:focus {left:0; width:auto; height:auto; overflow:visible; z-index:9999; padding:8px 16px; background:#000; color:#fff;}
 .ir {position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
-.partyLobby {min-height:100dvh; padding-bottom:max(24px, env(safe-area-inset-bottom));}
-.partyLobby .cl_subVisual {height:72px; background:linear-gradient(135deg, #7655f5, #b46cff);}
-.partyLobby .cl_breadcrumb {width:100%; font-size:12px; color:#666; padding:14px 20px 0;}
-.partyLobby .cl_pageTitle {width:100%; font-family:NotoSansB, sans-serif; font-size:26px; color:#222; margin-bottom:20px; padding:0 20px;}
-.partyLobby .contentWrap {width:100%; padding:0 20px;}
+.partyLobby {position:relative; min-height:100dvh; overflow:hidden; padding-bottom:max(48px, env(safe-area-inset-bottom)); background:radial-gradient(circle at 8% 28%, rgba(255,214,102,.38) 0 90px, transparent 91px), radial-gradient(circle at 92% 72%, rgba(180,108,255,.18) 0 150px, transparent 151px), linear-gradient(180deg, #eee8ff 0, #faf8ff 55%, #f2edff 100%);}
+.partyLobby::before, .partyLobby::after {position:absolute; content:''; pointer-events:none; border-radius:50%; filter:blur(2px);}
+.partyLobby::before {left:-110px; top:340px; width:260px; height:260px; opacity:.65; background:linear-gradient(135deg, #ffd76e, #ff9fb5);}
+.partyLobby::after {right:-130px; top:160px; width:300px; height:300px; opacity:.5; background:linear-gradient(135deg, #8f72ff, #e48cff);}
+.partyLobby .cl_subVisual {position:relative; height:180px; overflow:hidden; background:linear-gradient(135deg, #5d3de8 0, #8d56f5 50%, #d267dd 100%); box-shadow:0 14px 35px rgba(76,43,160,.24);}
+.partyLobby .cl_subVisual::before {position:absolute; left:50%; top:-150px; width:540px; height:340px; content:''; opacity:.7; border:1px solid rgba(255,255,255,.2); border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,.2), transparent 68%); transform:translateX(-50%);}
+.partyLobby .cl_subVisual::after {position:absolute; left:0; bottom:-1px; width:100%; height:38px; content:''; background:linear-gradient(176deg, transparent 0 48%, #eee8ff 50%);}
+.partyLobby .cl_breadcrumb {position:relative; width:100%; max-width:720px; z-index:1; font-size:12px; color:#675b80; margin:0 auto; padding:16px 24px 0;}
+.partyLobby .cl_pageTitle {position:relative; width:100%; max-width:720px; z-index:1; font-family:NotoSansB, sans-serif; font-size:30px; color:#251844; margin:0 auto 22px; padding:4px 24px 0;}
+.partyLobby .contentWrap {position:relative; width:100%; max-width:720px; z-index:1; margin:0 auto; padding:0 24px;}
 .partyLobby .fullContentWrap {width:100%;}
 .homeButton {position:fixed; right:16px; top:max(14px, env(safe-area-inset-top)); width:auto; min-height:42px; z-index:100; font-size:14px; padding:0 16px; border:1px solid rgba(255,255,255,.45); border-radius:22px; background:rgba(41,24,74,.78); backdrop-filter:blur(8px);}
-.lobbyPanel {width:100%; padding:22px 20px; border:1px solid #ddd6f5; border-radius:18px; background:#fff; box-shadow:0 10px 28px rgba(74,47,140,.1);}
-.lobbyPanel h2 {font-size:20px; margin:0 0 8px;}
+.watermarkImage {position:fixed; right:90px; top:max(10px, env(safe-area-inset-top)); width:50px; height:50px; z-index:100; object-fit:cover; border:2px solid rgba(255,255,255,.82); border-radius:50%; background:#fff8e8; box-shadow:0 5px 15px rgba(41,24,74,.25);}
+.lobbyPanel {width:100%; padding:30px; border:1px solid rgba(255,255,255,.85); border-radius:26px; background:rgba(255,255,255,.92); box-shadow:0 22px 55px rgba(68,39,133,.16), inset 0 1px 0 #fff; backdrop-filter:blur(14px);}
+.lobbyPanel h2 {font-size:22px; color:#2c1c50; margin:0 0 8px;}
 .lobbyIntro {font-size:14px; color:#666; margin:0 0 24px;}
 .lobbyForm label {display:block; font-family:NotoSansB, sans-serif; margin-bottom:8px;}
-.lobbyForm input {width:100%; height:52px; font-size:16px; color:#222; margin-bottom:12px; padding:0 14px; border:1px solid #c9c3da; border-radius:12px; background:#fff;}
+.lobbyForm input {width:100%; height:54px; font-size:16px; color:#222; margin-bottom:14px; padding:0 16px; border:1px solid #d4cbea; border-radius:14px; background:#faf8ff; box-shadow:inset 0 2px 5px rgba(66,39,125,.04);}
 .lobbyForm input:focus {outline:3px solid rgba(118,85,245,.25); border-color:#7655f5;}
-button {width:100%; min-height:52px; font-family:NotoSansB, sans-serif; font-size:16px; color:#fff; border:0; border-radius:12px; background:#7655f5; cursor:pointer; touch-action:manipulation;}
+button {width:100%; min-height:52px; font-family:NotoSansB, sans-serif; font-size:16px; color:#fff; border:0; border-radius:14px; background:linear-gradient(135deg, #6747e8, #9361f5); box-shadow:0 8px 18px rgba(103,71,232,.22); cursor:pointer; touch-action:manipulation; transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;}
+button:hover {filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 11px 22px rgba(103,71,232,.28);}
+button:active {transform:translateY(1px);}
 button:focus-visible {outline:3px solid #222; outline-offset:2px;}
 button:disabled {background:#aaa4b8; cursor:not-allowed;}
-.joinDivider {color:#888; text-align:center; margin:22px 0;}
-.homeGames {margin-top:28px; padding-top:22px; border-top:1px solid #ddd6f5;}
+.joinDivider {display:flex; align-items:center; gap:12px; color:#8b819f; text-align:center; margin:24px 0;}
+.joinDivider::before, .joinDivider::after {flex:1; height:1px; content:''; background:#e1daef;}
+.homeGames {margin-top:30px; padding-top:24px; border-top:1px solid #e5def1;}
 .homeGames h2 {font-size:17px;}
-.homeGameList {display:flex; flex-direction:column; gap:8px; margin:0; padding:0; list-style:none;}
-.homeGameList li {display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:NotoSansB, sans-serif;}
-.homeGameList button {width:auto; min-height:38px; font-size:12px; padding:0 14px;}
+.homeGameList {display:flex; flex-wrap:wrap; gap:10px; margin:0; padding:0; list-style:none;}
+.homeGameList li {display:flex; justify-content:space-between; align-items:center; gap:10px; width:calc(50% - 5px); min-height:60px; font-family:NotoSansB, sans-serif; color:#44365f; padding:10px 10px 10px 14px; border:1px solid #e7e0f2; border-radius:14px; background:linear-gradient(135deg, #fbfaff, #f3effc);}
+.homeGameList li:last-child {width:100%;}
+.homeGameList button {width:auto; min-height:36px; font-size:12px; padding:0 12px; box-shadow:none;}
 .message {min-height:18px; font-size:13px; color:#b3261e; margin:14px 0 0;}
 .roomHeader {margin-bottom:20px;}
 .roomHeader p {color:#666; margin:0 0 10px;}
@@ -76,11 +86,11 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .playerState.offline {color:#b3261e;}
 .gameStarted {font-family:NotoSansB, sans-serif; font-size:22px; text-align:center; padding:44px 0;}
 .gameChoice {display:flex; flex-direction:column; gap:12px;}
-.gameChoice button {display:flex; align-items:center; min-height:104px; text-align:left; padding:14px 18px;}
+.gameChoice button {display:flex; align-items:center; min-height:104px; text-align:left; padding:14px 18px; border:1px solid rgba(255,255,255,.35); background:linear-gradient(135deg, #6042d9, #9d63ef);}
 .gameChoice strong {display:block; font-size:18px; margin-bottom:4px;}
 .gameChoice span {font-family:NotoSansR, sans-serif; font-size:13px; opacity:.9;}
 .gameChoice .gameInfoButton {min-height:40px; justify-content:center; font-size:13px; color:#7655f5; margin-top:-8px; padding:8px; border:1px solid #7655f5; background:#fff;}
-.gameThumbnail {display:block; flex:0 0 72px; width:72px; height:72px; object-fit:contain; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
+.gameThumbnail {display:block; flex:0 0 76px; width:76px; height:76px; object-fit:contain; margin-right:16px; padding:5px; border:1px solid rgba(255,255,255,.28); border-radius:18px; background:rgba(255,255,255,.2); box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
 .gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:420px; overflow:hidden; text-align:center; border-radius:16px; background:radial-gradient(circle at 50% 40%, #ffffff 0, #f4ecff 52%, #e4d6ff 100%);}
 .gameStage.penalty {background:radial-gradient(circle at 50% 40%, #ff8c8c 0, #d51f35 68%, #840016 100%); animation:penaltyFlash .2s linear 5;}
 .gameStage.exploded {background:radial-gradient(circle at 50% 40%, #fff1a6 0, #ff7448 52%, #7b0011 100%); animation:explosionShake .55s ease-out both;}
@@ -188,7 +198,20 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 @keyframes carRumble {from {transform:translate(0, 2px) rotate(-1deg);} to {transform:translate(2px, -1px) rotate(1deg);}}
 @keyframes ufoHover {from {transform:translateY(5px) rotate(-3deg);} to {transform:translateY(-7px) rotate(3deg); filter:drop-shadow(0 0 12px #61ffe0);}}
 @keyframes windRush {from {transform:translateX(-35px); opacity:0;} 45% {opacity:.9;} to {transform:translateX(95px); opacity:0;}}
-@media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense, .raceObject, .raceLane.car::before {animation:none;}}
+@media(max-width:768px) {
+.partyLobby {padding-bottom:max(32px, env(safe-area-inset-bottom));}
+.partyLobby::before {left:-90px; top:390px; width:190px; height:190px;}
+.partyLobby::after {right:-100px; top:180px; width:220px; height:220px;}
+.partyLobby .cl_subVisual {height:138px;}
+.partyLobby .cl_breadcrumb {padding:12px 20px 0;}
+.partyLobby .cl_pageTitle {font-size:26px; margin-bottom:18px; padding:3px 20px 0;}
+.partyLobby .contentWrap {padding:0 16px;}
+.lobbyPanel {padding:24px 20px; border-radius:22px;}
+.watermarkImage {right:88px; top:max(12px, env(safe-area-inset-top)); width:44px; height:44px;}
+.homeGameList {flex-direction:column;}
+.homeGameList li, .homeGameList li:last-child {width:100%;}
+}
+@media(prefers-reduced-motion:reduce) {button {transition:none;} .pig, .pigFinale, .bomb, .suspense, .raceObject, .raceLane.car::before {animation:none;}}
 </style>
 </head>
 <body>
@@ -196,6 +219,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 <div class="pageOutWrap partyLobby">
   <div class="cl_subVisual" aria-hidden="true"></div>
   <button id="homeButton" class="homeButton" type="button" aria-label="홈으로 이동">⌂ 홈</button>
+  <img class="watermarkImage" src="/assets/softm-watermark.png" alt="softM 워터마크">
   <nav class="topUtility" aria-label="게임 설정">
     <button id="soundButton" class="utilityButton" type="button" aria-label="소리 끄기">🔊</button>
     <button id="helpButton" class="utilityButton" type="button" aria-label="게임 방법 보기">?</button>

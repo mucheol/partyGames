@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 const httpServer = createServer((request, response) => {
   const path = new URL(request.url, 'http://localhost').pathname;
   const asset = path.match(/^\/assets\/([a-z0-9-]+\.png)$/)?.[1];
-  const files = {'/':['index.html', 'text/html; charset=utf-8']};
+  const files = {'/':['index.html', 'text/html; charset=utf-8'], '/robots.txt':['robots.txt', 'text/plain; charset=utf-8'], '/sitemap.xml':['sitemap.xml', 'application/xml; charset=utf-8'], '/site.webmanifest':['site.webmanifest', 'application/manifest+json; charset=utf-8']};
   if (asset) files[path] = [`assets/${asset}`, 'image/png'];
   if (!files[path]) return response.writeHead(404).end();
   readFile(join(__dirname, 'public', files[path][0]), (error, data) => {
