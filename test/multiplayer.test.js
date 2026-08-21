@@ -14,9 +14,9 @@ test('10명이 같은 방에서 준비하고 게임을 시작한다', async () =
 
   try {
     await Promise.all(clients.map(socket => new Promise(resolve => socket.on('connect', resolve))));
-    const created = await emit(clients[0], 'room:create', {nickname:'방장', playerId:'player-0', gameType:'balloon'});
+    const created = await emit(clients[0], 'room:create', {nickname:'방장', playerId:'player-0', gameType:'character'});
     assert.equal(created.room.players.length, 1);
-    assert.equal(created.room.selectedGame, 'balloon');
+    assert.equal(created.room.selectedGame, 'character');
 
     for (let index = 1; index < clients.length; index++) {
       const joined = await emit(clients[index], 'room:join', {code:created.room.code, nickname:`참가자${index}`, playerId:`player-${index}`});
