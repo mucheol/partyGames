@@ -174,7 +174,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .raceTrack.finale {transform:scale(1.35) translate(-10%, 4%) skewY(-2deg); transform-origin:85% 50%;}
 .raceLane {position:relative; height:82px; border-bottom:2px dashed rgba(255,255,255,.25);}
 .raceLane::after {position:absolute; right:0; top:0; z-index:3; width:5px; height:100%; content:''; background:repeating-linear-gradient(#fff 0 8px, #111 8px 16px);}
-.raceObject {position:absolute; left:calc((100% - 88px) * var(--progress)); top:2px; width:88px; height:76px; object-fit:contain; transition:left .2s linear, transform .2s ease;}
+.raceObject {position:absolute; left:calc((100% - 88px) * var(--progress)); top:2px; width:88px; height:76px; object-fit:contain; transition:left .32s linear, transform .2s ease;}
 .raceTrack.finale .raceObject {transition-duration:.4s;}
 .raceLabel {position:absolute; left:4px; top:4px; z-index:2; font-family:NotoSansB, sans-serif; font-size:11px; color:#fff; text-shadow:0 1px 3px #000;}
 .raceObject.backward {transform:scaleX(-1);}
@@ -312,6 +312,7 @@ let countdownTimer;
 let penaltyTimer;
 let soundEnabled = localStorage.partySound !== 'off';
 let selectedStockSymbol;
+let previousRacePositions = {};
 const pigAssets = ['pig-mascot.png', 'pig-peek.png', 'pig-run.png', 'pig-fireworks.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-tipsy.png', 'pig-dizzy.png', 'pig-moonwalk.png', 'pig-slide.png', 'pig-cartwheel.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-parachute.png', 'pig-superhero.png', 'pig-skates.png', 'pig-banana.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-spy.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-umbrella.png', 'pig-rocket.png', 'pig-magician.png', 'pig-ghost.png', 'pig-detective.png', 'pig-king.png', 'pig-cowboy.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'];
 const pigAssetVersion = '?v=20260821-cutout';
 
@@ -523,12 +524,15 @@ function render() {
       document.getElementById('stockReadyButton')?.addEventListener('click', () => send('stocks:ready', {ready:!ready}).catch(error => alert(error.message)));
       addAbortControl(isHost);
     } else if (room.game.phase === 'choose') {
+      previousRacePositions = {};
       panel.innerHTML = `<div class="gameStage"><h2>우승할 선수를 고르세요</h2><p class="gameHint">${room.game.raceChoiceCount}/${room.players.length}명 선택 완료</p><div class="raceChoiceGrid">${room.game.racers.map(racer => `<button class="${racer.id}" type="button" data-racer="${racer.id}" ${room.game.myRacer ? 'disabled' : ''}><img src="/assets/racer-${racer.id}-frame-1.png" alt=""><span>${escapeHtml(racer.name)}</span></button>`).join('')}</div>${room.game.myRacer ? `<p class="gameHint">${escapeHtml(room.game.racers.find(racer => racer.id === room.game.myRacer).name)} 선택 완료!</p>` : ''}</div>`;
       panel.querySelectorAll('[data-racer]').forEach(button => button.onclick = () => send('race:choose', {racerId:button.dataset.racer}).catch(() => {}));
       addAbortControl(isHost);
     } else {
-      const frame = (room.game.raceTick % 4) + 1;
-      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finish' ? `${escapeHtml(room.game.raceWinner.name)} 결승선 통과!` : room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.phase === 'finale' || room.game.phase === 'finish' ? 'finale' : ''}">${room.game.racers.map(racer => { const incident = room.game.raceEvents[racer.id] || ''; return `<div class="raceLane ${racer.id}"><span class="raceLabel">${escapeHtml(racer.name)}</span>${incident ? `<span class="raceIncident">${raceIncidentLabels[incident]}</span>` : ''}<img class="raceObject ${incident}" style="--progress:${Math.min(1, (room.game.racePositions[racer.id] || 0) / 100)}" src="/assets/racer-${racer.id}-frame-${frame}.png" alt="${escapeHtml(racer.name)}"></div>`; }).join('')}</div></div>`;
+      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finish' ? `${escapeHtml(room.game.raceWinner.name)} 결승선 통과!` : room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.phase === 'finale' || room.game.phase === 'finish' ? 'finale' : ''}">${room.game.racers.map(racer => { const incident = room.game.raceEvents[racer.id] || ''; return `<div class="raceLane ${racer.id}"><span class="raceLabel">${escapeHtml(racer.name)}</span>${incident ? `<span class="raceIncident">${raceIncidentLabels[incident]}</span>` : ''}<img class="raceObject ${incident}" data-race-object="${racer.id}" style="--progress:${Math.min(1, (previousRacePositions[racer.id] ?? room.game.racePositions[racer.id] ?? 0) / 100)}" src="/assets/racer-${racer.id}.png" alt="${escapeHtml(racer.name)}"></div>`; }).join('')}</div></div>`;
+      panel.querySelector('.raceTrack').offsetWidth;
+      panel.querySelectorAll('[data-race-object]').forEach(image => image.style.setProperty('--progress', Math.min(1, (room.game.racePositions[image.dataset.raceObject] || 0) / 100)));
+      previousRacePositions = {...room.game.racePositions};
       addAbortControl(isHost);
     }
     return;
