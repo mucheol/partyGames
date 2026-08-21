@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="description" content="방 코드를 공유하고 친구들과 실시간으로 즐기는 모바일 파티 게임입니다.">
+<meta name="keywords" content="파티게임, 멀티플레이, 모바일게임">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="파티 게임">
+<meta property="og:description" content="방을 만들고 친구들과 실시간 파티 게임을 시작하세요.">
+<meta property="og:image" content="/images/party-game-og.jpg">
+<meta property="og:url" content="/">
+<link rel="canonical" href="/">
+<title>파티 게임</title>
+<link rel="stylesheet" href="css/font.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/commonLayout.css">
+<link rel="stylesheet" href="css/layout.css">
+<style>
+* {box-sizing:border-box;}
+body {min-width:320px; margin:0; background:#f5f2ff;}
+button, input {font:inherit;}
+.skipNav {position:absolute; left:-9999px; top:0; width:1px; height:1px; overflow:hidden;}
+.skipNav:focus {left:0; width:auto; height:auto; overflow:visible; z-index:9999; padding:8px 16px; background:#000; color:#fff;}
+.ir {position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+.partyLobby {min-height:100dvh; padding-bottom:max(24px, env(safe-area-inset-bottom));}
+.partyLobby .cl_subVisual {height:72px; background:linear-gradient(135deg, #7655f5, #b46cff);}
+.partyLobby .cl_breadcrumb {width:100%; font-size:12px; color:#666; padding:14px 20px 0;}
+.partyLobby .cl_pageTitle {width:100%; font-family:NotoSansB, sans-serif; font-size:26px; color:#222; margin-bottom:20px; padding:0 20px;}
+.partyLobby .contentWrap {width:100%; padding:0 20px;}
+.partyLobby .fullContentWrap {width:100%;}
+.lobbyPanel {width:100%; padding:22px 20px; border:1px solid #ddd6f5; border-radius:18px; background:#fff; box-shadow:0 10px 28px rgba(74,47,140,.1);}
+.lobbyPanel h2 {font-size:20px; margin:0 0 8px;}
+.lobbyIntro {font-size:14px; color:#666; margin:0 0 24px;}
+.lobbyForm label {display:block; font-family:NotoSansB, sans-serif; margin-bottom:8px;}
+.lobbyForm input {width:100%; height:52px; font-size:16px; color:#222; margin-bottom:12px; padding:0 14px; border:1px solid #c9c3da; border-radius:12px; background:#fff;}
+.lobbyForm input:focus {outline:3px solid rgba(118,85,245,.25); border-color:#7655f5;}
+button {width:100%; min-height:52px; font-family:NotoSansB, sans-serif; font-size:16px; color:#fff; border:0; border-radius:12px; background:#7655f5; cursor:pointer; touch-action:manipulation;}
+button:focus-visible {outline:3px solid #222; outline-offset:2px;}
+button:disabled {background:#aaa4b8; cursor:not-allowed;}
+.joinDivider {color:#888; text-align:center; margin:22px 0;}
+.message {min-height:18px; font-size:13px; color:#b3261e; margin:14px 0 0;}
+.roomHeader {margin-bottom:20px;}
+.roomHeader p {color:#666; margin:0 0 10px;}
+.roomCode {display:block; font-size:30px; color:#7655f5; letter-spacing:5px;}
+.playerList {display:flex; flex-direction:column; gap:8px; margin:0 0 20px; padding:0; list-style:none;}
+.playerList li {display:flex; justify-content:space-between; align-items:center; min-height:48px; padding:0 14px; border-radius:10px; background:#f6f4fc;}
+.playerState {font-size:12px; color:#666;}
+.playerState.offline {color:#b3261e;}
+.gameStarted {font-family:NotoSansB, sans-serif; font-size:22px; text-align:center; padding:44px 0;}
+.gameChoice {display:flex; flex-direction:column; gap:12px;}
+.gameChoice button {min-height:84px; text-align:left; padding:14px 18px;}
+.gameChoice strong {display:block; font-size:18px; margin-bottom:4px;}
+.gameChoice span {font-family:NotoSansR, sans-serif; font-size:13px; opacity:.9;}
+.gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:360px; text-align:center;}
+.character {font-size:104px; animation:pop .45s ease-in-out infinite alternate; filter:drop-shadow(0 14px 12px rgba(80,45,120,.22));}
+.character.clone::after {content:'👾'; display:inline-block; margin-left:-24px; animation:clone .45s ease-in-out infinite alternate;}
+.bomb {font-size:110px; animation:shake .16s linear infinite;}
+.gameHint {font-size:16px; color:#666; margin-bottom:18px;}
+.resultIcon {font-size:88px; margin-bottom:16px;}
+.resultNames {font-family:NotoSansB, sans-serif; font-size:25px; color:#7655f5; margin-bottom:26px;}
+@keyframes pop {from {transform:translateY(8px) scale(.92) rotate(-5deg);} to {transform:translateY(-8px) scale(1.08) rotate(5deg);}}
+@keyframes clone {from {transform:translateX(-8px);} to {transform:translateX(16px);}}
+@keyframes shake {0%,100% {transform:rotate(-4deg);} 50% {transform:rotate(4deg) scale(1.04);}}
+@media(prefers-reduced-motion:reduce) {.character, .character.clone::after, .bomb {animation:none;}}
+</style>
+</head>
+<body>
+<a href="#content" class="skipNav">본문 바로가기</a>
+<div class="pageOutWrap partyLobby">
+  <div class="cl_subVisual" aria-hidden="true"></div>
+  <div class="cl_breadcrumb" role="navigation" aria-label="현재 위치">HOME / 파티 게임</div>
+  <div class="cl_pageTitle">파티 게임</div>
+  <main id="content" class="contentWrap">
+    <h1 class="ir">모바일 파티 게임</h1>
+    <section class="lobbyPanel" aria-labelledby="panelTitle">
+      <h2 id="panelTitle">게임 방 입장</h2>
+      <p class="lobbyIntro">방을 만들거나 전달받은 6자리 코드를 입력하세요.</p>
+      <form id="createForm" class="lobbyForm">
+        <label for="createNickname">방장 닉네임</label>
+        <input id="createNickname" name="nickname" maxlength="12" autocomplete="nickname" required>
+        <button type="submit">방 만들기</button>
+      </form>
+      <p class="joinDivider" aria-hidden="true">또는</p>
+      <form id="joinForm" class="lobbyForm">
+        <label for="joinNickname">참가자 닉네임</label>
+        <input id="joinNickname" name="nickname" maxlength="12" autocomplete="nickname" required>
+        <label for="roomCode">방 코드</label>
+        <input id="roomCode" name="code" maxlength="6" inputmode="text" autocomplete="off" autocapitalize="characters" required>
+        <button type="submit">참여하기</button>
+      </form>
+      <p id="message" class="message" role="alert" aria-live="polite"></p>
+    </section>
+  </main>
+  <div class="fullContentWrap"></div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const panel = document.querySelector('.lobbyPanel');
+const message = document.getElementById('message');
+const playerId = localStorage.partyPlayerId ||= crypto.randomUUID();
+let session = JSON.parse(localStorage.partySession || 'null');
+let room;
+
+function send(event, data) {
+  return new Promise((resolve, reject) => socket.emit(event, data, result => result.error ? reject(new Error(result.error)) : resolve(result)));
+}
+
+function escapeHtml(value) {
+  const span = document.createElement('span');
+  span.textContent = value;
+  return span.innerHTML;
+}
+
+function render() {
+  const me = room.players.find(player => player.id === playerId);
+  const isHost = room.hostId === playerId;
+  if (room.status === 'selecting') {
+    panel.innerHTML = isHost ? `<h2>게임 선택</h2><p class="lobbyIntro">이번에 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-game="character"><strong>👾 캐릭터 추첨</strong><span>캐릭터가 화면을 옮겨 다니다 최종 당첨자를 선택해요.</span></button><button type="button" data-game="bomb"><strong>💣 폭탄 돌리기</strong><span>폭탄을 다음 사람에게 넘기세요. 언제 터질지는 비밀!</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="gameStarted">방장이 게임을 고르고 있어요.</p></div>';
+    panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
+      try { await send('game:select', {type:button.dataset.game}); }
+      catch (error) { document.getElementById('message').textContent = error.message; }
+    });
+    return;
+  }
+  if (room.status === 'playing') {
+    const active = room.game.activeIds.includes(playerId);
+    const holdingBomb = room.game.holderId === playerId;
+    if (room.game.type === 'character') {
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">캐릭터가 어디에서 나타날까요?</p>${active ? `<div class="character ${room.game.activeIds.length > 1 ? 'clone' : ''}" role="img" aria-label="캐릭터">👾</div>` : '<p class="gameStarted">다른 화면을 확인하세요!</p>'}</div>`;
+    } else {
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">${holdingBomb ? '빨리 다음 사람에게 넘기세요!' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? '<div class="bomb" role="img" aria-label="폭탄">💣</div><button id="passButton" type="button">다음 사람에게 넘기기</button>' : '<p class="gameStarted">두근두근…</p>'}</div>`;
+      document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
+    }
+    return;
+  }
+  if (room.status === 'result') {
+    const winners = room.players.filter(player => room.game.winnerIds.includes(player.id));
+    const mine = winners.some(player => player.id === playerId);
+    panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<button id="resetButton" type="button">다른 게임 하기</button>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
+    document.getElementById('resetButton')?.addEventListener('click', () => send('game:reset', {}));
+    return;
+  }
+  const canStart = room.players.length >= 2 && room.players.every(player => player.ready && player.connected);
+  panel.innerHTML = `<header class="roomHeader"><h2>게임 대기실</h2><p>친구에게 아래 코드를 알려주세요.</p><strong class="roomCode">${room.code}</strong></header><ul class="playerList" aria-label="참가자 목록">${room.players.map(player => `<li><span>${escapeHtml(player.nickname)}${player.id === room.hostId ? ' · 방장' : ''}</span><span class="playerState ${player.connected ? '' : 'offline'}">${player.connected ? (player.ready ? '준비 완료' : '준비 중') : '연결 끊김'}</span></li>`).join('')}</ul>${isHost ? `<button id="actionButton" type="button" ${canStart ? '' : 'disabled'}>게임 시작</button>` : `<button id="actionButton" type="button">${me.ready ? '준비 취소' : '준비 완료'}</button>`}<p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  document.getElementById('actionButton').onclick = async () => {
+    try { await send(isHost ? 'room:start' : 'room:ready', isHost ? {} : {ready:!me.ready}); }
+    catch (error) { document.getElementById('message').textContent = error.message; }
+  };
+}
+
+async function enter(event, type) {
+  event.preventDefault();
+  message.textContent = '';
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  try {
+    const result = await send(`room:${type}`, {...data, playerId});
+    room = result.room;
+    session = {code:room.code};
+    localStorage.partySession = JSON.stringify(session);
+    render();
+  } catch (error) { message.textContent = error.message; }
+}
+
+document.getElementById('createForm').onsubmit = event => enter(event, 'create');
+document.getElementById('joinForm').onsubmit = event => enter(event, 'join');
+document.getElementById('roomCode').oninput = event => event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
+socket.on('room:updated', updatedRoom => { room = updatedRoom; render(); });
+socket.on('connect', async () => {
+  if (!session?.code) return;
+  try { room = (await send('room:resume', {...session, playerId})).room; render(); }
+  catch { localStorage.removeItem('partySession'); session = null; }
+});
+</script>
+</body>
+</html>
