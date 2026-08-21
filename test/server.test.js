@@ -31,4 +31,8 @@ test('돼지 동작 이미지 40개를 제공한다', () => {
 test('게임 설정값을 허용 범위로 제한한다', () => {
   assert.deepEqual(gameSettings('character', {winnerCount:'9'}), {winnerCount:'random'});
   assert.deepEqual(gameSettings('bomb', {duration:'30-60', stackPenalty:true}), {duration:'30-60', stackPenalty:true});
+  assert.deepEqual(gameSettings('balloon', {length:'long'}), {length:'long'});
+  assert.deepEqual(gameSettings('freeze', {rounds:'3'}), {rounds:3});
+  assert.deepEqual(gameSettings('minority', {rounds:99}), {rounds:5});
+  assert.deepEqual(gameSettings('silentCount', {anything:true}), {});
 });

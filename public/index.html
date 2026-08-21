@@ -94,6 +94,19 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .helpDialog::backdrop {background:rgba(20,12,35,.72);}
 .helpDialog h2 {margin-top:0;}
 .helpDialog li {margin-bottom:10px;}
+.balloonStage {background:radial-gradient(circle at 50% 35%, #fff7c9, #ffe5f1 58%, #f5f2ff);}
+.balloonVisual {display:flex; justify-content:center; align-items:center; width:230px; height:230px; margin:0 auto 8px; transform:scale(var(--balloonScale)); animation:balloonBob .8s ease-in-out infinite alternate;}
+.balloonVisual img {width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 18px 16px rgba(124,63,96,.24));}
+.progressText {display:block; font-family:NotoSansB, sans-serif; font-size:38px; color:#e4578d; margin-bottom:18px;}
+.freezeStage {background:linear-gradient(160deg, #fff6d7, #e7e1ff);}
+.freezePig {width:250px; height:250px; object-fit:contain; margin-bottom:12px; animation:pigDance .38s ease-in-out infinite alternate; filter:drop-shadow(0 18px 16px rgba(98,47,96,.22));}
+.freezePig.stopped {animation:freezePop .28s ease-out both; filter:drop-shadow(0 0 20px #69d9ff);}
+.choiceButtons {display:flex; flex-direction:column; width:100%; gap:14px;}
+.choiceButtons button {min-height:78px; font-size:19px; background:linear-gradient(135deg, #7655f5, #9c72ff);}
+.choiceButtons button:last-child {background:linear-gradient(135deg, #e4578d, #ff7ca8);}
+.choiceButtons button.selected {outline:5px solid #ffdc55; transform:scale(.97);}
+.choiceResult {font-family:NotoSansB, sans-serif; font-size:42px; color:#7655f5;}
+.silentNumber {display:block; font-family:NotoSansB, sans-serif; font-size:112px; color:#7655f5; margin-bottom:18px; text-shadow:0 8px 0 #e4ddff;}
 @keyframes peekLeft {0%,100% {transform:translate(-135%, -50%) rotate(14deg);} 35%,65% {transform:translate(-78%, -50%) rotate(8deg);}}
 @keyframes peekRight {0%,100% {transform:translate(35%, -50%) rotate(-14deg) scaleX(-1);} 35%,65% {transform:translate(-22%, -50%) rotate(-8deg) scaleX(-1);}}
 @keyframes pigPop {0% {transform:translate(-50%, -30%) scale(0); opacity:0;} 35% {transform:translate(-50%, -50%) scale(1.15); opacity:1;} 80% {transform:translate(-50%, -50%) scale(1);} 100% {transform:translate(-50%, -70%) scale(0); opacity:0;}}
@@ -109,7 +122,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 @keyframes penaltyFlash {0%,100% {filter:brightness(1);} 50% {filter:brightness(1.45);}}
 @keyframes countdownPop {0% {transform:scale(.3); opacity:0;} 70% {transform:scale(1.2); opacity:1;} 100% {transform:scale(1); opacity:1;}}
 @keyframes explosionShake {0%,100% {transform:translate(0);} 20% {transform:translate(-10px, 6px) rotate(-2deg);} 40% {transform:translate(9px, -7px) rotate(2deg);} 60% {transform:translate(-6px, 4px);} 80% {transform:translate(4px, -3px);}}
-@media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense {animation:none;}}
+@keyframes balloonBob {from {transform:scale(var(--balloonScale)) translateY(5px) rotate(-2deg);} to {transform:scale(var(--balloonScale)) translateY(-5px) rotate(2deg);}}
+@keyframes pigDance {from {transform:translateX(-10px) rotate(-7deg);} to {transform:translateX(10px) rotate(7deg) scale(1.04);}}
+@keyframes freezePop {0% {transform:scale(1.18);} 100% {transform:scale(1);}}
+@media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense, .balloonVisual, .freezePig {animation:none;}}
 </style>
 </head>
 <body>
@@ -152,6 +168,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
   <ul>
     <li><strong>돼지 술래잡기:</strong> 여러 화면을 오가는 돼지가 마지막 당첨자를 선택합니다.</li>
     <li><strong>폭탄 돌리기:</strong> 폭탄이 보일 때만 넘기세요. 없는 화면을 누르면 1초간 잠깁니다.</li>
+    <li><strong>돼지 풍선 눈치팡:</strong> 모두 함께 풍선을 키우고, 숨은 한계를 넘긴 사람이 당첨됩니다.</li>
+    <li><strong>얼음! 돼지!:</strong> 돼지가 멈추면 재빨리 얼음 버튼을 누르세요. 느릴수록 벌점이 쌓입니다.</li>
+    <li><strong>소수파 술래:</strong> 5초 안에 둘 중 하나를 고르세요. 적게 고른 쪽에 벌점이 쌓입니다.</li>
+    <li><strong>침묵 카운트:</strong> 말없이 한 명씩 누르세요. 동시에 누르면 충돌 벌점이 생깁니다.</li>
   </ul>
   <button id="closeHelpButton" type="button">확인</button>
 </dialog>
@@ -236,6 +256,16 @@ function addAbortControl(isHost) {
   };
 }
 
+function appendExtraGames(container, attribute) {
+  const games = [
+    ['balloon', '돼지 풍선 눈치팡', 'pig-parachute.png', '다 같이 풍선을 키우고 터뜨린 사람이 당첨!'],
+    ['freeze', '얼음! 돼지!', 'pig-disco.png', '흔들다가 얼음 신호에 가장 늦은 사람을 찾아요.'],
+    ['minority', '소수파 술래', 'pig-detective.png', '5초 선택에서 자꾸 소수파가 되는 사람은 누구?'],
+    ['silentCount', '침묵 카운트', 'pig-sneeze.png', '말없이 한 명씩 눌러 목표 숫자를 완성해요.']
+  ];
+  container.insertAdjacentHTML('beforeend', games.map(([type, title, image, description]) => `<button type="button" ${attribute}="${type}" data-title="${title}"><img class="gameThumbnail" src="/assets/${image}" alt=""><span><strong>${title}</strong>${description}</span></button>`).join(''));
+}
+
 function render() {
   clearTimeout(countdownTimer);
   const me = room.players.find(player => player.id === playerId);
@@ -249,6 +279,7 @@ function render() {
   }
   if (room.status === 'choosing') {
     panel.innerHTML = isHost ? `<h2>다른 게임 선택</h2><p class="lobbyIntro">바로 이어서 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-change-game="character"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>도망치는 돼지의 마지막 선택을 기다려요.</span></button><button type="button" data-change-game="bomb"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>설정한 시간 사이 누군가의 화면에서 폭발해요.</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="suspense">방장이 다른 게임을 고르고 있어요.</p></div>';
+    if (isHost) appendExtraGames(panel.querySelector('.gameChoice'), 'data-change-game');
     panel.querySelectorAll('[data-change-game]').forEach(button => button.onclick = async () => {
       configureGame(null, button.dataset.changeGame, true);
     });
@@ -267,7 +298,7 @@ function render() {
         panel.innerHTML = `<div class="gameStage"><p class="gameHint">돼지가 누굴 선택할까요?!</p><div class="mascotScene">${active ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="장난꾸러기 돼지">${pair ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="">` : ''}` : ''}</div>${active ? (room.game.move === 'fakeout' ? '<p class="gameHint">당첨…인 줄 알았지?!</p>' : '') : '<p class="gameHint">쉿! 다른 화면을 살펴보세요.</p>'}</div>`;
       }
       addAbortControl(isHost);
-    } else {
+    } else if (room.game.type === 'bomb') {
       const from = room.players.find(player => player.id === room.game.lastPass?.fromId)?.nickname;
       const to = room.players.find(player => player.id === room.game.lastPass?.toId)?.nickname;
       const passNotice = from && to ? `${escapeHtml(from)} → ${escapeHtml(to)}` : '폭탄이 출발했습니다!';
@@ -276,6 +307,24 @@ function render() {
       document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
       if (!holdingBomb) document.getElementById('bombStage').onclick = () => send('game:mistake', {}).catch(() => {});
       addAbortControl(isHost);
+    } else if (room.game.type === 'balloon') {
+      panel.innerHTML = `<div class="gameStage balloonStage"><p class="gameHint">눈치 보지 말고 돼지 풍선을 키우세요!</p><div class="balloonVisual" style="--balloonScale:${.55 + room.game.progress / 180}"><img src="/assets/pig-parachute.png" alt="커지는 돼지 풍선"></div><strong class="progressText">${room.game.progress}%</strong><button id="balloonButton" type="button">한 번 더 빵빵!</button></div>`;
+      document.getElementById('balloonButton').onclick = event => { event.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(.94)'},{transform:'scale(1)'}], {duration:140}); send('balloon:tap', {}).catch(() => {}); };
+      addAbortControl(isHost);
+    } else if (room.game.type === 'freeze') {
+      const frozen = room.game.phase === 'freeze';
+      panel.innerHTML = `<div class="gameStage ${frozen ? 'freezeStage' : ''}"><p class="gameHint">${room.game.round}/${room.settings.rounds} 라운드</p><img class="freezePig ${frozen ? 'stopped' : ''}" src="/assets/${frozen ? 'pig-jump.png' : 'pig-disco.png'}" alt="춤추는 돼지"><p class="suspense">${escapeHtml(room.game.message)}</p>${frozen ? '<button id="freezeButton" type="button">얼음!</button>' : ''}</div>`;
+      document.getElementById('freezeButton')?.addEventListener('click', event => { event.currentTarget.disabled = true; send('freeze:hold', {}).catch(() => {}); });
+      addAbortControl(isHost);
+    } else if (room.game.type === 'minority') {
+      const choosing = room.game.phase === 'choose';
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">${room.game.round}/${room.settings.rounds} 라운드 · ${room.game.responseCount}/${room.players.length}명 선택</p>${choosing ? `<div class="choiceButtons"><button type="button" data-choice="0">${escapeHtml(room.game.prompt[0])}</button><button type="button" data-choice="1">${escapeHtml(room.game.prompt[1])}</button></div>` : `<p class="suspense">${escapeHtml(room.game.message)}</p><p class="choiceResult">${room.game.optionCounts?.join(' : ') || ''}</p>`}</div>`;
+      panel.querySelectorAll('[data-choice]').forEach(button => button.onclick = () => { panel.querySelectorAll('[data-choice]').forEach(item => item.classList.remove('selected')); button.classList.add('selected'); send('minority:choose', {choice:Number(button.dataset.choice)}).catch(() => {}); });
+      addAbortControl(isHost);
+    } else {
+      panel.innerHTML = `<div class="gameStage ${room.game.phase === 'collision' ? 'penalty' : ''}"><p class="gameHint">목표 ${room.game.target} · 겹침 3번이면 종료</p><strong class="silentNumber">${room.game.count}</strong><p class="gameHint">${escapeHtml(room.game.message)}</p><button id="silentButton" type="button" ${room.game.phase !== 'tap' ? 'disabled' : ''}>나만 누른다!</button></div>`;
+      document.getElementById('silentButton').onclick = event => { event.currentTarget.disabled = true; send('silent:tap', {}).catch(() => {}); setTimeout(() => { if (event.currentTarget) event.currentTarget.disabled = false; }, 500); };
+      addAbortControl(isHost);
     }
     return;
   }
@@ -283,6 +332,7 @@ function render() {
     const winners = room.players.filter(player => room.game.winnerIds.includes(player.id));
     const mine = winners.some(player => player.id === playerId);
     panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<div class="resultActions"><button id="resetButton" type="button">같은 게임 다시 하기</button><button id="changeButton" class="secondaryButton" type="button">다른 게임 하기</button></div>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
+    if (room.game.message) panel.querySelector('.resultNames').insertAdjacentHTML('beforebegin', `<p class="gameHint">${escapeHtml(room.game.message)}</p>`);
     if (room.game.type === 'bomb') panel.querySelector('.gameStage').classList.add('exploded');
     if (mine) panel.querySelector('h2').textContent = room.game.type === 'bomb' ? '펑 당첨!' : '당첨자!';
     document.getElementById('resetButton')?.addEventListener('click', () => send('game:reset', {mode:'same'}));
@@ -316,14 +366,20 @@ async function enter(event, type) {
 
 function chooseGame(nickname) {
   panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="돼지 술래잡기"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>화면 사이로 도망치는 돼지가 마지막 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  appendExtraGames(panel.querySelector('.gameChoice'), 'data-game');
   panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
     configureGame(nickname, button.dataset.game, false);
   });
 }
 
 function configureGame(nickname, type, replay) {
-  const title = type === 'character' ? '돼지 술래잡기' : '폭탄 돌리기';
-  const settings = type === 'character' ? '<label for="winnerCount">당첨자 수</label><select id="winnerCount" name="winnerCount"><option value="random">1~3명 무작위</option><option value="1">1명</option><option value="2">2명</option><option value="3">3명</option></select>' : '<label for="bombDuration">폭발 시간</label><select id="bombDuration" name="duration"><option value="15-30">15~30초</option><option value="30-60">30~60초</option></select><label><input name="stackPenalty" type="checkbox"> 오터치할 때마다 패널티 누적</label>';
+  const titles = {character:'돼지 술래잡기', bomb:'폭탄 돌리기', balloon:'돼지 풍선 눈치팡', freeze:'얼음! 돼지!', minority:'소수파 술래', silentCount:'침묵 카운트'};
+  const title = titles[type];
+  let settings = '<p>추가 설정 없이 바로 시작합니다.</p>';
+  if (type === 'character') settings = '<label for="winnerCount">당첨자 수</label><select id="winnerCount" name="winnerCount"><option value="random">1~3명 무작위</option><option value="1">1명</option><option value="2">2명</option><option value="3">3명</option></select>';
+  if (type === 'bomb') settings = '<label for="bombDuration">폭발 시간</label><select id="bombDuration" name="duration"><option value="15-30">15~30초</option><option value="30-60">30~60초</option></select><label><input name="stackPenalty" type="checkbox"> 오터치할 때마다 패널티 누적</label>';
+  if (type === 'balloon') settings = '<label for="balloonLength">게임 길이</label><select id="balloonLength" name="length"><option value="short">짧게</option><option value="long">길게</option></select>';
+  if (type === 'freeze' || type === 'minority') settings = '<label for="rounds">라운드 수</label><select id="rounds" name="rounds"><option value="5">5라운드</option><option value="3">3라운드</option></select>';
   panel.innerHTML = `<h2>${title} 설정</h2><form id="settingsForm"><div class="gameSettings">${settings}</div><button type="submit">${replay ? '이 게임 시작하기' : '이 설정으로 방 만들기'}</button></form><p id="message" class="message" role="alert"></p>`;
   document.getElementById('settingsForm').onsubmit = async event => {
     event.preventDefault();
