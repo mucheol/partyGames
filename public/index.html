@@ -274,7 +274,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
   <h2>게임 방법</h2>
   <ul>
     <li><strong>돼지 술래잡기:</strong> 여러 화면을 오가는 돼지가 마지막 당첨자를 선택합니다.</li>
-    <li><strong>폭탄 돌리기:</strong> 폭탄이 보일 때만 넘기세요. 없는 화면을 누르면 1초간 잠깁니다.</li>
+    <li><strong>폭탄 돌리기:</strong> 폭탄이 보일 때만 넘기세요. 없는 화면을 누르면 2초간 잠깁니다.</li>
     <li><strong>100 카드 승부:</strong> 100을 넘지 않도록 원하는 만큼 카드를 받습니다.</li>
     <li><strong>랜덤 주식 투자:</strong> 무작위 6종목을 거래해 설정한 3~7일 뒤 자산 순위를 겨룹니다.</li>
     <li><strong>우당탕 경마:</strong> 다섯 선수 중 하나를 고르고 무작위 레이스를 응원합니다.</li>
@@ -485,7 +485,7 @@ function render() {
       const to = room.players.find(player => player.id === room.game.lastPass?.toId)?.nickname;
       const passNotice = from && to ? `${escapeHtml(from)} → ${escapeHtml(to)}` : '폭탄이 출발했습니다!';
       const turn = ((room.game.round - 1) % room.players.length) + 1;
-      panel.innerHTML = `<div id="bombStage" class="gameStage ${penalized ? 'penalty' : ''}"><p class="passNotice">${passNotice} · ${turn}/${room.players.length}</p><p class="gameHint">${holdingBomb ? '째깍째깍' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? `<img class="bomb" src="/assets/bomb.png" alt="불붙은 폭탄"><button id="passButton" type="button" ${penalized ? 'disabled' : ''}>${penalized ? '1초간 멈춤!' : '폭탄 넘기기!'}</button>` : '<p class="suspense">두근두근…</p><p class="penaltyWarning">폭탄이 없을 때 누르면 1초간 멈춥니다</p>'}</div>`;
+      panel.innerHTML = `<div id="bombStage" class="gameStage ${penalized ? 'penalty' : ''}"><p class="passNotice">${passNotice} · ${turn}/${room.players.length}</p><p class="gameHint">${holdingBomb ? '째깍째깍' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? `<img class="bomb" src="/assets/bomb.png" alt="불붙은 폭탄"><button id="passButton" type="button" ${penalized ? 'disabled' : ''}>${penalized ? '2초간 멈춤!' : '폭탄 넘기기!'}</button>` : '<p class="suspense">두근두근…</p><p class="penaltyWarning">폭탄이 없을 때 누르면 2초간 멈춥니다</p>'}</div>`;
       document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
       if (!holdingBomb) document.getElementById('bombStage').onclick = () => send('game:mistake', {}).catch(() => {});
       addAbortControl(isHost);

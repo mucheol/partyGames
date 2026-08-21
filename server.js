@@ -34,6 +34,7 @@ const randomStockChange = country => country === 'KR' ? randomBetween(-3000, 300
 const marketRevealMs = require.main === module ? 3000 : 30;
 const raceTiming = require.main === module ? {start:700, normal:320, finale:400} : {start:5, normal:2, finale:4};
 const raceDuration = require.main === module ? 10_000 : 100;
+const bombPenaltyMs = 2000;
 const stockFeeRate = 0.001;
 const stockList = [
   ['005930', '삼성전자', 'KR', '반도체'],
@@ -425,7 +426,7 @@ io.on('connection', socket => {
     const room = rooms.get(socket.data.code);
     const player = room?.players.get(socket.data.playerId);
     if (!room || !player || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderIds.includes(player.id)) return done({error:'패널티를 적용할 수 없습니다.'});
-    player.penaltyUntil = room.settings.stackPenalty ? Math.max(Date.now(), player.penaltyUntil || 0) + 1000 : Date.now() + 1000;
+    player.penaltyUntil = room.settings.stackPenalty ? Math.max(Date.now(), player.penaltyUntil || 0) + bombPenaltyMs : Date.now() + bombPenaltyMs;
     emitRoom(room);
     setTimeout(() => {
       if (player.penaltyUntil <= Date.now()) player.penaltyUntil = 0;
