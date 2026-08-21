@@ -82,7 +82,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .message {min-height:18px; font-size:13px; color:#b3261e; margin:14px 0 0;}
 .roomHeader {margin-bottom:20px;}
 .roomHeader p {color:#666; margin:0 0 10px;}
-.roomCode {display:block; font-size:30px; color:#7655f5; letter-spacing:5px;}
+.roomCode {display:block; width:100%; min-height:0; font-family:NotoSansB, sans-serif; font-size:30px; color:#7655f5; letter-spacing:5px; padding:6px 0; border:0; border-radius:12px; background:none; cursor:pointer;}
+.inviteRow {display:flex; gap:10px; margin-top:12px;}
+.inviteRow button {flex:1; min-height:46px; font-size:15px; padding:0 12px;}
+.inviteRow .subButton {color:#5a4a86; border:1px solid #d4cbea; background:#faf8ff;}
 .playerList {display:flex; flex-direction:column; gap:8px; margin:0 0 20px; padding:0; list-style:none;}
 .playerList li {display:flex; justify-content:space-between; align-items:center; min-height:48px; padding:0 14px; border-radius:10px; background:#f6f4fc;}
 .playerState {font-size:12px; color:#666;}
@@ -569,10 +572,23 @@ function render() {
     return;
   }
   const canStart = room.players.length >= 2 && room.players.every(player => player.ready && player.connected);
-  panel.innerHTML = `<header class="roomHeader"><h2>게임 대기실</h2><p>친구에게 아래 코드를 알려주세요.</p><strong class="roomCode">${room.code}</strong></header><ul class="playerList" aria-label="참가자 목록">${room.players.map(player => `<li><span>${escapeHtml(player.nickname)}${player.id === room.hostId ? ' · 방장' : ''}</span><span class="playerState ${player.connected ? '' : 'offline'}">${player.connected ? (player.ready ? '준비 완료' : '준비 중') : '연결 끊김'}</span></li>`).join('')}</ul>${isHost ? `<button id="actionButton" type="button" ${canStart ? '' : 'disabled'}>게임 시작</button>` : `<button id="actionButton" type="button">${me.ready ? '준비 취소' : '준비 완료'}</button>`}<p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="roomHeader"><h2>게임 대기실</h2><p>아래 버튼으로 친구를 초대하세요.</p><button class="roomCode" id="lobbyRoomCode" type="button" aria-label="방 코드 ${room.code} 복사하기">${room.code}</button><div class="inviteRow"><button id="shareButton" type="button">초대 링크 공유</button><button id="copyLinkButton" class="subButton" type="button">링크 복사</button></div></header><ul class="playerList" aria-label="참가자 목록">${room.players.map(player => `<li><span>${escapeHtml(player.nickname)}${player.id === room.hostId ? ' · 방장' : ''}</span><span class="playerState ${player.connected ? '' : 'offline'}">${player.connected ? (player.ready ? '준비 완료' : '준비 중') : '연결 끊김'}</span></li>`).join('')}</ul>${isHost ? `<button id="actionButton" type="button" ${canStart ? '' : 'disabled'}>게임 시작</button>` : `<button id="actionButton" type="button">${me.ready ? '준비 취소' : '준비 완료'}</button>`}<p id="message" class="message" role="alert" aria-live="polite"></p>`;
   document.getElementById('actionButton').onclick = async () => {
     try { await send(isHost ? 'room:start' : 'room:ready', isHost ? {} : {ready:!me.ready}); }
     catch (error) { document.getElementById('message').textContent = error.message; }
+  };
+  const inviteUrl = `${location.origin}/?code=${room.code}`;
+  const notify = text => { const target = document.getElementById('message'); if (target) target.textContent = text; };
+  async function copyText(value, done) {
+    try { await navigator.clipboard.writeText(value); notify(done); }
+    catch { notify('복사할 수 없어요. 방 코드를 직접 알려주세요.'); }
+  }
+  document.getElementById('lobbyRoomCode').onclick = () => copyText(room.code, '방 코드를 복사했어요.');
+  document.getElementById('copyLinkButton').onclick = () => copyText(inviteUrl, '초대 링크를 복사했어요.');
+  document.getElementById('shareButton').onclick = async () => {
+    if (!navigator.share) return copyText(inviteUrl, '초대 링크를 복사했어요. 친구에게 붙여넣어 주세요.');
+    try { await navigator.share({title:'다같이 게임즈', text:`방 코드 ${room.code}로 같이 게임해요!`, url:inviteUrl}); }
+    catch (error) { if (error.name !== 'AbortError') copyText(inviteUrl, '초대 링크를 복사했어요.'); }
   };
 }
 
@@ -733,10 +749,27 @@ socket.on('room:updated', updatedRoom => {
   render();
   syncBombSound();
 });
+const invitedCode = (new URLSearchParams(location.search).get('code') || '').toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6);
+if (invitedCode) history.replaceState(null, '', location.pathname);
+
+let invitePending = Boolean(invitedCode);
+
+function applyInvite() {
+  if (!invitePending) return;
+  invitePending = false;
+  const codeInput = document.getElementById('roomCode');
+  if (!codeInput) return;
+  codeInput.value = invitedCode;
+  if (!savedNickname) { document.getElementById('joinNickname').focus(); return; }
+  document.getElementById('joinForm').requestSubmit();
+}
+
 socket.on('connect', async () => {
-  if (!session?.code) return;
+  if (!session?.code) return applyInvite();
+  if (invitePending && (session.code === invitedCode || !confirm(`초대받은 ${invitedCode} 방으로 이동할까요? 현재 방에서는 나가게 됩니다.`))) invitePending = false;
+  if (invitePending) { localStorage.removeItem('partySession'); session = null; return applyInvite(); }
   try { room = (await send('room:resume', {...session, playerId})).room; render(); }
-  catch { localStorage.removeItem('partySession'); session = null; }
+  catch { localStorage.removeItem('partySession'); session = null; applyInvite(); }
 });
 </script>
 </body>
