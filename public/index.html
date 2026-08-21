@@ -626,9 +626,12 @@ function blockedNickname(value) {
 function saveNickname(value) {
   savedNickname = value.trim();
   localStorage.partyNickname = savedNickname;
-  document.getElementById('joinNickname').value = savedNickname;
-  document.getElementById('createNickname').value = savedNickname;
+  const joinInput = document.getElementById('joinNickname');
+  const createInput = document.getElementById('createNickname');
+  if (joinInput) joinInput.value = savedNickname;
+  if (createInput) createInput.value = savedNickname;
   const saved = document.getElementById('savedNickname');
+  if (!saved) return;
   saved.hidden = false;
   saved.querySelector('span').textContent = `저장된 닉네임: ${savedNickname}`;
 }
