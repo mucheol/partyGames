@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { readdirSync } = require('node:fs');
 const { join } = require('node:path');
-const { blockedNickname, gameSettings, roomCode, shuffle, validNickname } = require('../server');
+const { blockedNickname, gameSettings, roomCode, selectStocks, shuffle, validNickname } = require('../server');
 
 test('방 코드와 닉네임 경계를 검증한다', () => {
   assert.match(roomCode(), /^[A-Z2-9]{6}$/);
@@ -32,4 +32,16 @@ test('게임 설정값을 허용 범위로 제한한다', () => {
   assert.deepEqual(gameSettings('character', {winnerCount:'9'}), {winnerCount:'random'});
   assert.deepEqual(gameSettings('bomb', {duration:'30-60', stackPenalty:true}), {duration:'30-60', stackPenalty:true});
   assert.deepEqual(gameSettings('cards', {unused:true}), {});
+  assert.deepEqual(gameSettings('stocks', {unused:true}), {});
+});
+
+test('주식은 매 판 한국과 미국의 서로 다른 6개 섹터에서 무작위 선정한다', () => {
+  for (let count = 0; count < 20; count++) {
+    const stocks = selectStocks();
+    assert.equal(stocks.length, 6);
+    assert.equal(stocks.filter(stock => stock[2] === 'KR').length, 3);
+    assert.equal(stocks.filter(stock => stock[2] === 'US').length, 3);
+    assert.equal(new Set(stocks.map(stock => stock[3])).size, 6);
+    assert.ok(stocks.every(stock => /^[가-힣\s]+$/.test(stock[1])));
+  }
 });

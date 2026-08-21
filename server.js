@@ -1,4 +1,5 @@
 const { createServer } = require('node:http');
+const { randomInt } = require('node:crypto');
 const { readFile } = require('node:fs');
 const { join } = require('node:path');
 const { Server } = require('socket.io');
@@ -18,8 +19,67 @@ const httpServer = createServer((request, response) => {
 const io = new Server(httpServer);
 const rooms = new Map();
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const gameTypes = ['character', 'bomb', 'cards'];
-const randomCard = () => 1 + Math.floor(Math.random() * 100);
+const gameTypes = ['character', 'bomb', 'cards', 'stocks'];
+const random = maximum => randomInt(maximum);
+const randomBetween = (minimum, maximum) => randomInt(minimum, maximum + 1);
+const randomCard = () => randomBetween(1, 100);
+const randomStockChange = () => {
+  const ordinary = randomBetween(-8000, 8000) / 100;
+  if (random(100) >= 15) return ordinary;
+  return ordinary < 0 ? Math.max(-99, ordinary * randomBetween(2, 5)) : ordinary * randomBetween(2, 10);
+};
+const marketRevealMs = require.main === module ? 3000 : 30;
+const stockList = [
+  ['005930', '삼성전자', 'KR', '반도체'],
+  ['000660', '에스케이하이닉스', 'KR', '메모리'],
+  ['005380', '현대자동차', 'KR', '자동차'],
+  ['000270', '기아', 'KR', '모빌리티'],
+  ['068270', '셀트리온', 'KR', '바이오'],
+  ['207940', '삼성바이오로직스', 'KR', '의약품'],
+  ['105560', '케이비금융', 'KR', '은행'],
+  ['055550', '신한지주', 'KR', '금융'],
+  ['035420', '네이버', 'KR', '인터넷'],
+  ['035720', '카카오', 'KR', '플랫폼'],
+  ['005490', '포스코홀딩스', 'KR', '철강'],
+  ['051910', '엘지화학', 'KR', '화학'],
+  ['012450', '한화에어로스페이스', 'KR', '방산'],
+  ['329180', '에이치디현대중공업', 'KR', '조선'],
+  ['015760', '한국전력', 'KR', '전력'],
+  ['030200', '케이티', 'KR', '통신'],
+  ['090430', '아모레퍼시픽', 'KR', '뷰티'],
+  ['097950', '씨제이제일제당', 'KR', '식품'],
+  ['003490', '대한항공', 'KR', '항공'],
+  ['028260', '삼성물산', 'KR', '건설'],
+  ['MSFT', '마이크로소프트', 'US', '클라우드'],
+  ['ORCL', '오라클', 'US', '데이터베이스'],
+  ['XOM', '엑슨모빌', 'US', '에너지'],
+  ['CVX', '셰브론', 'US', '석유'],
+  ['JPM', '제이피모건', 'US', '투자은행'],
+  ['GS', '골드만삭스', 'US', '자산관리'],
+  ['NVDA', '엔비디아', 'US', 'AI'],
+  ['TSLA', '테슬라', 'US', '전기차'],
+  ['LLY', '일라이릴리', 'US', '제약'],
+  ['UNH', '유나이티드헬스', 'US', '헬스케어'],
+  ['AMZN', '아마존', 'US', '이커머스'],
+  ['WMT', '월마트', 'US', '유통'],
+  ['KO', '코카콜라', 'US', '음료'],
+  ['MCD', '맥도날드', 'US', '외식'],
+  ['DIS', '디즈니', 'US', '콘텐츠'],
+  ['NFLX', '넷플릭스', 'US', '스트리밍'],
+  ['BA', '보잉', 'US', '우주항공'],
+  ['CAT', '캐터필러', 'US', '산업재'],
+  ['NEE', '넥스트에라 에너지', 'US', '친환경전력'],
+  ['PG', '프록터앤드갬블', 'US', '생활용품']
+];
+
+function selectStocks() {
+  const selected = [];
+  for (const country of shuffle(['KR', 'KR', 'KR', 'US', 'US', 'US'])) {
+    const choices = shuffle(stockList).filter(stock => stock[2] === country && !selected.some(chosen => chosen[3] === stock[3]));
+    selected.push(choices[0]);
+  }
+  return selected;
+}
 const pigScenes = {
   peek:['pig-peek.png', 'pig-spy.png', 'pig-detective.png', 'pig-ghost.png'],
   pop:['pig-mascot.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-dizzy.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-magician.png', 'pig-king.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'],
@@ -37,7 +97,7 @@ function gameSettings(type, input = {}) {
 
 function roomCode() {
   let code;
-  do code = Array.from({length:6}, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  do code = Array.from({length:6}, () => alphabet[random(alphabet.length)]).join('');
   while (rooms.has(code));
   return code;
 }
@@ -45,7 +105,7 @@ function roomCode() {
 function shuffle(items) {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = random(i + 1);
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
@@ -64,7 +124,7 @@ function publicRoom(room, viewerId) {
   const maySeeWaiting = room.game?.standing?.has(viewerId) || room.game?.choices?.[viewerId] === false || myCards.reduce((sum, card) => sum + card, 0) > 100;
   const cardEligible = room.game?.cardsById ? [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) : [];
   const waitingNames = maySeeWaiting ? cardEligible.filter(player => !(player.id in room.game.choices)).map(player => player.nickname) : [];
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : []} : null;
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : []} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
@@ -78,7 +138,7 @@ function characterStep(room, stepsLeft) {
   if (!ids.length) return;
   if (stepsLeft === 0) {
     const configured = room.settings.winnerCount;
-    const winnerCount = Math.min(ids.length, configured === 'random' ? 1 + Math.floor(Math.random() * Math.min(3, ids.length)) : Number(configured));
+    const winnerCount = Math.min(ids.length, configured === 'random' ? randomBetween(1, Math.min(3, ids.length)) : Number(configured));
     room.game.phase = 'finale';
     room.game.activeIds = [];
     room.game.winnerIds = shuffle(ids).slice(0, winnerCount);
@@ -92,10 +152,10 @@ function characterStep(room, stepsLeft) {
   }
   const split = stepsLeft <= 4 && stepsLeft >= 2 && ids.length > 1;
   room.game.activeIds = shuffle(ids).slice(0, split ? 2 : 1);
-  const sceneType = ['peek', 'pop', 'run'][Math.floor(Math.random() * 3)];
-  room.game.move = stepsLeft === 6 ? 'fakeout' : stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : sceneType === 'peek' ? (Math.random() < .5 ? 'peekLeft' : 'peekRight') : sceneType;
+  const sceneType = ['peek', 'pop', 'run'][random(3)];
+  room.game.move = stepsLeft === 6 ? 'fakeout' : stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : sceneType === 'peek' ? (random(2) ? 'peekLeft' : 'peekRight') : sceneType;
   const scenePoses = pigScenes[sceneType];
-  room.game.posesById = Object.fromEntries(room.game.activeIds.map(id => [id, scenePoses[Math.floor(Math.random() * scenePoses.length)]]));
+  room.game.posesById = Object.fromEntries(room.game.activeIds.map(id => [id, scenePoses[random(scenePoses.length)]]));
   room.game.pose = room.game.posesById[room.game.activeIds[0]];
   room.game.duration = 700 + stepsLeft * 35;
   room.game.round += 1;
@@ -103,7 +163,7 @@ function characterStep(room, stepsLeft) {
   room.timer = setTimeout(() => {
     room.game.activeIds = [];
     emitRoom(room);
-    room.timer = setTimeout(() => characterStep(room, stepsLeft - 1), 280 + Math.floor(Math.random() * 320));
+    room.timer = setTimeout(() => characterStep(room, stepsLeft - 1), randomBetween(280, 599));
   }, room.game.duration);
 }
 
@@ -158,13 +218,43 @@ function finishCardChoices(room) {
   }, 3000);
 }
 
+function stockValue(room, playerId) {
+  const holdings = room.game.holdingsById[playerId];
+  return room.game.cashById[playerId] + room.game.markets.reduce((sum, stock) => sum + (holdings[stock.symbol] || 0) * stock.price, 0);
+}
+
+function closeStockDay(room) {
+  if (room.game?.type !== 'stocks' || room.game.phase !== 'trade' || room.game.stockReady.size < room.players.size) return;
+  room.game.phase = 'market';
+  room.game.stockReady.clear();
+  room.game.markets.forEach(stock => {
+    stock.change = randomStockChange();
+    stock.price = Math.max(100, Math.round(stock.price * (1 + stock.change / 100)));
+    stock.history.push(stock.price);
+  });
+  emitRoom(room);
+  room.timer = setTimeout(() => {
+    if (room.game.day === 4) {
+      room.game.stockRankings = [...room.players.values()].map(player => ({id:player.id, nickname:player.nickname, value:Math.round(stockValue(room, player.id))})).sort((a, b) => b.value - a.value);
+      const highest = room.game.stockRankings[0]?.value;
+      room.game.winnerIds = room.game.stockRankings.filter(player => player.value === highest).map(player => player.id);
+      room.game.phase = 'ranking';
+      room.status = 'result';
+    } else {
+      room.game.day += 1;
+      room.game.phase = 'trade';
+    }
+    emitRoom(room);
+  }, marketRevealMs);
+}
+
 function startGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'playing';
   room.game = {type, phase:'playing', startsAt:Date.now(), move:null, pose:null, posesById:{}, duration:1000, activeIds:[], winnerIds:[], holderId:null, lastPass:null, queue:[], round:0};
   emitRoom(room);
   if (type === 'character') {
-    room.timer = setTimeout(() => characterStep(room, 12 + Math.floor(Math.random() * 5)), 900);
+    room.timer = setTimeout(() => characterStep(room, randomBetween(12, 16)), 900);
   } else if (type === 'bomb') {
     nextBombHolder(room);
     emitRoom(room);
@@ -174,13 +264,29 @@ function startGame(room, type) {
       room.game.phase = 'result';
       room.game.winnerIds = [room.game.holderId];
       emitRoom(room);
-    }, room.settings.duration === '30-60' ? 30_000 + Math.floor(Math.random() * 30_001) : 15_000 + Math.floor(Math.random() * 15_001));
-  } else {
+    }, room.settings.duration === '30-60' ? randomBetween(30_000, 60_000) : randomBetween(15_000, 30_000));
+  } else if (type === 'cards') {
     room.game.phase = 'decide';
     room.game.cardsById = {};
     room.game.choices = {};
     room.game.standing = new Set();
     room.players.forEach(player => room.game.cardsById[player.id] = [randomCard()]);
+    emitRoom(room);
+  } else {
+    room.game.phase = 'trade';
+    room.game.day = 1;
+    room.game.markets = selectStocks().map(([symbol, name, country, sector]) => {
+      const price = randomBetween(50_000, 300_000);
+      const history = Array.from({length:4}, () => Math.max(100, Math.round(price * (1 + randomBetween(-2000, 2000) / 10_000))));
+      return {symbol, name, country, sector, price, change:0, history:[...history, price]};
+    });
+    room.game.cashById = {};
+    room.game.holdingsById = {};
+    room.game.stockReady = new Set();
+    room.players.forEach(player => {
+      room.game.cashById[player.id] = 100_000_000;
+      room.game.holdingsById[player.id] = {};
+    });
     emitRoom(room);
   }
 }
@@ -275,6 +381,40 @@ io.on('connection', socket => {
     done({ok:true});
   });
 
+  socket.on('stocks:trade', ({symbol, side, amount}, done) => {
+    const room = rooms.get(socket.data.code);
+    const playerId = socket.data.playerId;
+    if (!room || room.status !== 'playing' || room.game?.type !== 'stocks' || room.game.phase !== 'trade' || room.game.stockReady.has(playerId)) return done({error:'지금은 거래할 수 없습니다.'});
+    const stock = room.game.markets.find(item => item.symbol === symbol);
+    amount = Number(amount);
+    if (!stock || !['buy', 'sell'].includes(side) || !Number.isFinite(amount) || amount < 10_000) return done({error:'거래 금액은 1만원 이상 입력해주세요.'});
+    const holdings = room.game.holdingsById[playerId];
+    if (side === 'buy') {
+      const equity = stockValue(room, playerId);
+      const exposure = room.game.markets.reduce((sum, item) => sum + (holdings[item.symbol] || 0) * item.price, 0);
+      if (equity <= 0 || exposure + amount > equity * 2 + 1) return done({error:'총 투자금은 평가자산의 2배를 넘을 수 없습니다.'});
+      holdings[symbol] = (holdings[symbol] || 0) + amount / stock.price;
+      room.game.cashById[playerId] -= amount;
+    } else {
+      const heldValue = (holdings[symbol] || 0) * stock.price;
+      if (amount > heldValue + 1) return done({error:'보유 금액보다 많이 팔 수 없습니다.'});
+      holdings[symbol] = Math.max(0, (holdings[symbol] || 0) - amount / stock.price);
+      room.game.cashById[playerId] += amount;
+    }
+    emitRoom(room);
+    done({ok:true});
+  });
+
+  socket.on('stocks:ready', ({ready}, done) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.status !== 'playing' || room.game?.type !== 'stocks' || room.game.phase !== 'trade') return done({error:'지금은 투자 완료를 변경할 수 없습니다.'});
+    if (ready) room.game.stockReady.add(socket.data.playerId);
+    else room.game.stockReady.delete(socket.data.playerId);
+    emitRoom(room);
+    closeStockDay(room);
+    done({ok:true});
+  });
+
   socket.on('game:reset', ({mode}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'result') return done({error:'방장만 다시 시작할 수 있습니다.'});
@@ -323,6 +463,10 @@ io.on('connection', socket => {
       room.game.choices[player.id] = false;
       finishCardChoices(room);
     }
+    if (room.status === 'playing' && room.game?.type === 'stocks' && room.game.phase === 'trade') {
+      room.game.stockReady.add(player.id);
+      closeStockDay(room);
+    }
     emitRoom(room);
     const cleanupTimer = setTimeout(() => {
       if ([...room.players.values()].every(candidate => !candidate.connected)) { clearTimeout(room.timer); rooms.delete(room.code); }
@@ -333,4 +477,4 @@ io.on('connection', socket => {
 
 if (require.main === module) httpServer.listen(process.env.PORT || 3000, '0.0.0.0', () => console.log(`http://localhost:${process.env.PORT || 3000}`));
 
-module.exports = { blockedNickname, gameSettings, httpServer, io, roomCode, shuffle, validNickname };
+module.exports = { blockedNickname, gameSettings, httpServer, io, roomCode, selectStocks, shuffle, validNickname };
