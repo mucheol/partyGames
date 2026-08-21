@@ -30,6 +30,7 @@ test('경마는 전원 선택 후 무작위 진행과 결승 슬로모션을 거
     }
     assert.ok(Date.now() - startedAt >= 100);
     assert.ok(finished.game.raceWinner);
+    assert.equal(finished.game.racePositions[finished.game.raceWinner.id], 108);
     assert.equal(finished.game.racePositions[finished.game.raceWinner.id], Math.max(...Object.values(finished.game.racePositions)));
   } finally {
     players.forEach(socket => socket.disconnect());

@@ -274,6 +274,7 @@ function raceStep(room) {
   if (Date.now() >= room.game.raceEndsAt) {
     const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
     room.game.raceWinner = winner;
+    room.game.racePositions[winner.id] = 108;
     room.game.winnerIds = [...room.players.values()].filter(player => room.game.raceChoices[player.id] === winner.id).map(player => player.id);
     room.game.raceEvents = {};
     room.game.phase = 'finish';

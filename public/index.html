@@ -181,6 +181,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .raceObject.backward {transform:scaleX(-1);}
 .raceObject.stopped {transform:rotate(-8deg) scale(.92); filter:grayscale(.6);}
 .raceObject.boost {transform:rotate(-3deg) scale(1.08); filter:drop-shadow(-14px 0 8px #74d5ff);}
+.raceObject.winner {z-index:4; transition-duration:.8s; filter:drop-shadow(-16px 0 10px #ffd84d);}
 .raceObject.flipped {transform:rotate(180deg);}
 .raceObject.sick {transform:rotate(12deg); filter:grayscale(.7);}
 .raceObject.broken {transform:rotate(-10deg); filter:saturate(.25);}
@@ -530,9 +531,9 @@ function render() {
       panel.querySelectorAll('[data-racer]').forEach(button => button.onclick = () => send('race:choose', {racerId:button.dataset.racer}).catch(() => {}));
       addAbortControl(isHost);
     } else {
-      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finish' ? `${escapeHtml(room.game.raceWinner.name)} 우승 확정!` : room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.raceFinale ? 'finale' : ''}">${room.game.racers.map(racer => { const incident = room.game.raceEvents[racer.id] || ''; return `<div class="raceLane ${racer.id}"><span class="raceLabel">${escapeHtml(racer.name)}</span>${incident ? `<span class="raceIncident">${raceIncidentLabels[incident]}</span>` : ''}<img class="raceObject ${incident}" data-race-object="${racer.id}" style="--progress:${Math.min(1, (previousRacePositions[racer.id] ?? room.game.racePositions[racer.id] ?? 0) / 100)}" src="/assets/racer-${racer.id}.png" alt="${escapeHtml(racer.name)}"></div>`; }).join('')}</div></div>`;
+      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finish' ? `${escapeHtml(room.game.raceWinner.name)} 결승선 통과!` : room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.raceFinale ? 'finale' : ''}">${room.game.racers.map(racer => { const incident = room.game.raceEvents[racer.id] || '', winner = room.game.phase === 'finish' && room.game.raceWinner.id === racer.id; return `<div class="raceLane ${racer.id}"><span class="raceLabel">${escapeHtml(racer.name)}</span>${incident ? `<span class="raceIncident">${raceIncidentLabels[incident]}</span>` : ''}<img class="raceObject ${incident} ${winner ? 'winner' : ''}" data-race-object="${racer.id}" style="--progress:${Math.min(1.08, (previousRacePositions[racer.id] ?? room.game.racePositions[racer.id] ?? 0) / 100)}" src="/assets/racer-${racer.id}.png" alt="${escapeHtml(racer.name)}"></div>`; }).join('')}</div></div>`;
       panel.querySelector('.raceTrack').offsetWidth;
-      panel.querySelectorAll('[data-race-object]').forEach(image => image.style.setProperty('--progress', Math.min(1, (room.game.racePositions[image.dataset.raceObject] || 0) / 100)));
+      panel.querySelectorAll('[data-race-object]').forEach(image => image.style.setProperty('--progress', Math.min(1.08, (room.game.racePositions[image.dataset.raceObject] || 0) / 100)));
       previousRacePositions = {...room.game.racePositions};
       addAbortControl(isHost);
     }
