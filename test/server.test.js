@@ -26,13 +26,15 @@ test('금지 닉네임의 숫자와 기호 우회를 차단한다', () => {
 
 test('돼지 동작 이미지 40개를 제공한다', () => {
   assert.equal(readdirSync(join(__dirname, '..', 'public', 'assets')).filter(file => file.startsWith('pig-')).length, 40);
+  assert.equal(readdirSync(join(__dirname, '..', 'public', 'assets')).filter(file => /^racer-.+-frame-\d\.png$/.test(file)).length, 20);
 });
 
 test('게임 설정값을 허용 범위로 제한한다', () => {
-  assert.deepEqual(gameSettings('character', {winnerCount:'9'}), {winnerCount:'random'});
+  assert.deepEqual(gameSettings('character', {winnerCount:'9'}), {winnerCount:'9'});
   assert.deepEqual(gameSettings('bomb', {duration:'30-60', stackPenalty:true}), {duration:'30-60', stackPenalty:true});
   assert.deepEqual(gameSettings('cards', {unused:true}), {});
-  assert.deepEqual(gameSettings('stocks', {unused:true}), {});
+  assert.deepEqual(gameSettings('stocks', {days:'7'}), {days:7});
+  assert.deepEqual(gameSettings('stocks', {days:'99'}), {days:7});
 });
 
 test('주식은 매 판 한국과 미국의 서로 다른 6개 섹터에서 무작위 선정한다', () => {

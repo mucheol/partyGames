@@ -93,10 +93,11 @@ const pigScenes = {
 
 function gameSettings(type, input = {}) {
   if (type === 'character') {
-    const winnerCount = ['1', '2', '3', 'random'].includes(String(input.winnerCount)) ? String(input.winnerCount) : 'random';
+    const winnerCount = ['random', ...Array.from({length:10}, (_, index) => String(index + 1))].includes(String(input.winnerCount)) ? String(input.winnerCount) : 'random';
     return {winnerCount};
   }
   if (type === 'bomb') return {duration:input.duration === '30-60' ? '30-60' : '15-30', stackPenalty:Boolean(input.stackPenalty)};
+  if (type === 'stocks') return {days:Math.max(3, Math.min(7, Number(input.days) || 4))};
   return {};
 }
 
@@ -126,10 +127,10 @@ function blockedNickname(value) {
 
 function publicRoom(room, viewerId) {
   const myCards = room.game?.cardsById?.[viewerId] || [];
-  const maySeeWaiting = room.game?.standing?.has(viewerId) || room.game?.choices?.[viewerId] === false || myCards.reduce((sum, card) => sum + card, 0) > 100;
+  const maySeeWaiting = room.game?.standing?.has(viewerId) || myCards.reduce((sum, card) => sum + card, 0) > 100;
   const cardEligible = room.game?.cardsById ? [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) : [];
-  const waitingNames = maySeeWaiting ? cardEligible.filter(player => !(player.id in room.game.choices)).map(player => player.nickname) : [];
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : [], racers:room.game.racers || [], racePositions:room.game.racePositions || {}, myRacer:room.game.raceChoices?.[viewerId] || null, raceChoiceCount:room.game.raceChoices ? Object.keys(room.game.raceChoices).length : 0, raceWinner:room.game.raceWinner || null} : null;
+  const waitingNames = maySeeWaiting ? cardEligible.map(player => player.nickname) : [];
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, holderIds:room.game.holderIds || [], winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.standing?.size || 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : [], racers:room.game.racers || [], racePositions:room.game.racePositions || {}, raceEvents:room.game.raceEvents || {}, raceTick:room.game.raceTick || 0, myRacer:room.game.raceChoices?.[viewerId] || null, raceChoiceCount:room.game.raceChoices ? Object.keys(room.game.raceChoices).length : 0, raceWinner:room.game.raceWinner || null} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
@@ -143,7 +144,7 @@ function characterStep(room, stepsLeft) {
   if (!ids.length) return;
   if (stepsLeft === 0) {
     const configured = room.settings.winnerCount;
-    const winnerCount = Math.min(ids.length, configured === 'random' ? randomBetween(1, Math.min(3, ids.length)) : Number(configured));
+    const winnerCount = Math.min(ids.length, configured === 'random' ? randomBetween(1, Math.min(10, ids.length)) : Number(configured));
     room.game.phase = 'finale';
     room.game.activeIds = [];
     room.game.winnerIds = shuffle(ids).slice(0, winnerCount);
@@ -155,8 +156,9 @@ function characterStep(room, stepsLeft) {
     }, 1300);
     return;
   }
-  const split = stepsLeft <= 4 && stepsLeft >= 2 && ids.length > 1;
-  room.game.activeIds = shuffle(ids).slice(0, split ? 2 : 1);
+  const pigCount = Math.min(ids.length, 1 + Math.floor(ids.length / 15));
+  const split = stepsLeft <= 4 && stepsLeft >= 2 && ids.length > pigCount;
+  room.game.activeIds = shuffle(ids).slice(0, Math.min(ids.length, pigCount + (split ? 1 : 0)));
   const sceneType = ['peek', 'pop', 'run'][random(3)];
   room.game.move = stepsLeft === 6 ? 'fakeout' : stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : sceneType === 'peek' ? (random(2) ? 'peekLeft' : 'peekRight') : sceneType;
   const scenePoses = pigScenes[sceneType];
@@ -172,14 +174,19 @@ function characterStep(room, stepsLeft) {
   }, room.game.duration);
 }
 
-function nextBombHolder(room) {
+function nextBombHolder(room, bombIndex) {
   const connectedIds = [...room.players.values()].filter(player => player.connected).map(player => player.id);
-  room.game.queue = room.game.queue.filter(id => connectedIds.includes(id));
-  if (!room.game.queue.length) room.game.queue = shuffle(connectedIds);
-  const previous = room.game.holderId;
-  if (room.game.queue.length > 1 && room.game.queue[0] === previous) room.game.queue.push(room.game.queue.shift());
-  room.game.holderId = room.game.queue.shift();
-  room.game.lastPass = previous ? {fromId:previous, toId:room.game.holderId} : null;
+  const bomb = room.game.bombs[bombIndex];
+  const unavailable = room.game.bombs.filter((_, index) => index !== bombIndex).map(item => item.holderId);
+  const candidates = connectedIds.filter(id => !unavailable.includes(id));
+  bomb.queue = bomb.queue.filter(id => candidates.includes(id));
+  if (!bomb.queue.length) bomb.queue = shuffle(candidates);
+  const previous = bomb.holderId;
+  if (bomb.queue.length > 1 && bomb.queue[0] === previous) bomb.queue.push(bomb.queue.shift());
+  bomb.holderId = bomb.queue.shift();
+  room.game.holderIds = room.game.bombs.map(item => item.holderId);
+  room.game.holderId = room.game.holderIds[0];
+  room.game.lastPass = previous ? {fromId:previous, toId:bomb.holderId} : null;
   room.game.round += 1;
 }
 
@@ -194,18 +201,7 @@ function queueGame(room, type) {
 function finishCardChoices(room) {
   if (room.game?.type !== 'cards' || room.game.phase !== 'decide') return;
   const eligible = [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100);
-  if (eligible.some(player => !(player.id in room.game.choices))) return;
-  eligible.forEach(player => {
-    if (room.game.choices[player.id]) room.game.cardsById[player.id].push(randomCard());
-    else room.game.standing.add(player.id);
-  });
-  const remaining = eligible.filter(player => room.game.choices[player.id] && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100);
-  if (remaining.length) {
-    room.game.choices = {};
-    room.game.round += 1;
-    emitRoom(room);
-    return;
-  }
+  if (eligible.length) return;
   room.game.phase = 'reveal';
   room.game.revealAt = Date.now() + 3000;
   emitRoom(room);
@@ -239,7 +235,7 @@ function closeStockDay(room) {
   });
   emitRoom(room);
   room.timer = setTimeout(() => {
-    if (room.game.day === 4) {
+    if (room.game.day === room.settings.days) {
       room.game.stockRankings = [...room.players.values()].map(player => ({id:player.id, nickname:player.nickname, value:Math.round(stockValue(room, player.id))})).sort((a, b) => b.value - a.value);
       const highest = room.game.stockRankings[0]?.value;
       room.game.winnerIds = room.game.stockRankings.filter(player => player.value === highest).map(player => player.id);
@@ -256,16 +252,30 @@ function closeStockDay(room) {
 function raceStep(room) {
   if (room.status !== 'playing' || room.game?.type !== 'race') return;
   const slow = room.game.phase === 'finale';
-  racers.forEach(racer => room.game.racePositions[racer.id] += slow ? randomBetween(1, 3) : randomBetween(2, 7));
+  const incidents = ['backward', 'flipped', 'sick', 'broken'];
+  room.game.raceTick += 1;
+  room.game.raceEvents = {};
+  racers.forEach(racer => {
+    const incident = Math.random() < (slow ? .06 : .12) ? incidents[randomBetween(0, incidents.length - 1)] : '';
+    room.game.raceEvents[racer.id] = incident;
+    const distance = incident === 'backward' ? -randomBetween(1, 3) : ['flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 3) : randomBetween(2, 7);
+    room.game.racePositions[racer.id] = Math.max(0, room.game.racePositions[racer.id] + distance);
+  });
   const leader = Math.max(...Object.values(room.game.racePositions));
   if (!slow && leader >= 82) room.game.phase = 'finale';
   if (leader >= 100) {
     const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
     room.game.raceWinner = winner;
     room.game.winnerIds = [...room.players.values()].filter(player => room.game.raceChoices[player.id] === winner.id).map(player => player.id);
-    room.game.phase = 'ranking';
-    room.status = 'result';
+    racers.forEach(racer => room.game.racePositions[racer.id] = racer.id === winner.id ? 100 : Math.min(98, room.game.racePositions[racer.id]));
+    room.game.raceEvents = {};
+    room.game.phase = 'finish';
     emitRoom(room);
+    room.timer = setTimeout(() => {
+      room.game.phase = 'ranking';
+      room.status = 'result';
+      emitRoom(room);
+    }, raceTiming.finale * 2);
     return;
   }
   emitRoom(room);
@@ -275,6 +285,8 @@ function raceStep(room) {
 function startRace(room) {
   room.game.phase = 'race';
   room.game.racePositions = Object.fromEntries(racers.map(racer => [racer.id, 0]));
+  room.game.raceEvents = {};
+  room.game.raceTick = 0;
   emitRoom(room);
   room.timer = setTimeout(() => raceStep(room), raceTiming.start);
 }
@@ -282,18 +294,19 @@ function startRace(room) {
 function startGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'playing';
-  room.game = {type, phase:'playing', startsAt:Date.now(), move:null, pose:null, posesById:{}, duration:1000, activeIds:[], winnerIds:[], holderId:null, lastPass:null, queue:[], round:0};
+  room.game = {type, phase:'playing', startsAt:Date.now(), move:null, pose:null, posesById:{}, duration:1000, activeIds:[], winnerIds:[], holderId:null, holderIds:[], lastPass:null, round:0};
   emitRoom(room);
   if (type === 'character') {
     room.timer = setTimeout(() => characterStep(room, randomBetween(12, 16)), 900);
   } else if (type === 'bomb') {
-    nextBombHolder(room);
+    room.game.bombs = Array.from({length:1 + Math.floor(room.players.size / 15)}, () => ({holderId:null, queue:[]}));
+    room.game.bombs.forEach((_, index) => nextBombHolder(room, index));
     emitRoom(room);
     room.timer = setTimeout(() => {
       if (room.status !== 'playing') return;
       room.status = 'result';
       room.game.phase = 'result';
-      room.game.winnerIds = [room.game.holderId];
+      room.game.winnerIds = [...room.game.holderIds];
       emitRoom(room);
     }, room.settings.duration === '30-60' ? randomBetween(30_000, 60_000) : randomBetween(15_000, 30_000));
   } else if (type === 'cards') {
@@ -348,8 +361,8 @@ io.on('connection', socket => {
     if (room.status !== 'lobby') return done({error:'이미 게임이 시작되었습니다.'});
     if (blockedNickname(nickname)) return done({error:'해당 닉네임은 사용할 수 없습니다. 다른 닉네임을 골라주세요.'});
     if (!validNickname(nickname) || typeof playerId !== 'string') return done({error:'입력 정보를 확인해주세요.'});
-    if (room.players.size >= 30) return done({error:'참가 인원이 가득 찼습니다.'});
     if ([...room.players.values()].some(player => player.nickname.toLowerCase() === nickname.trim().toLowerCase())) return done({error:'이미 사용 중인 닉네임입니다.'});
+    if (room.players.size >= 40) return done({error:'참가 인원이 가득 찼습니다.'});
     room.players.set(playerId, {id:playerId, nickname:nickname.trim(), ready:false, connected:true, penaltyUntil:0, socketId:socket.id});
     socket.join(code);
     socket.data = {code, playerId};
@@ -389,9 +402,10 @@ io.on('connection', socket => {
 
   socket.on('game:pass', (_, done) => {
     const room = rooms.get(socket.data.code);
-    if (!room || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderId !== socket.data.playerId) return done({error:'지금은 폭탄을 넘길 수 없습니다.'});
+    const bombIndex = room?.game?.bombs?.findIndex(bomb => bomb.holderId === socket.data.playerId) ?? -1;
+    if (!room || room.status !== 'playing' || room.game?.type !== 'bomb' || bombIndex < 0) return done({error:'지금은 폭탄을 넘길 수 없습니다.'});
     if ((room.players.get(socket.data.playerId).penaltyUntil || 0) > Date.now()) return done({error:'패널티 중에는 폭탄을 넘길 수 없습니다.'});
-    nextBombHolder(room);
+    nextBombHolder(room, bombIndex);
     emitRoom(room);
     done({ok:true});
   });
@@ -399,7 +413,7 @@ io.on('connection', socket => {
   socket.on('game:mistake', (_, done) => {
     const room = rooms.get(socket.data.code);
     const player = room?.players.get(socket.data.playerId);
-    if (!room || !player || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderId === player.id) return done({error:'패널티를 적용할 수 없습니다.'});
+    if (!room || !player || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderIds.includes(player.id)) return done({error:'패널티를 적용할 수 없습니다.'});
     player.penaltyUntil = room.settings.stackPenalty ? Math.max(Date.now(), player.penaltyUntil || 0) + 1000 : Date.now() + 1000;
     emitRoom(room);
     setTimeout(() => emitRoom(room), 1050).unref();
@@ -411,7 +425,9 @@ io.on('connection', socket => {
     if (!room || room.status !== 'playing' || room.game?.type !== 'cards' || room.game.phase !== 'decide') return done({error:'지금은 카드를 선택할 수 없습니다.'});
     const cards = room.game.cardsById[socket.data.playerId];
     if (room.game.standing.has(socket.data.playerId) || cards.reduce((sum, card) => sum + card, 0) > 100) return done({error:'이미 선택을 마쳤습니다.'});
-    if (!(socket.data.playerId in room.game.choices)) room.game.choices[socket.data.playerId] = Boolean(take);
+    if (take) room.game.cardsById[socket.data.playerId].push(randomCard());
+    else room.game.standing.add(socket.data.playerId);
+    room.game.round += 1;
     emitRoom(room);
     finishCardChoices(room);
     done({ok:true});
@@ -502,9 +518,12 @@ io.on('connection', socket => {
       const nextHost = [...room.players.values()].find(candidate => candidate.connected);
       if (nextHost) { room.hostId = nextHost.id; nextHost.ready = true; }
     }
-    if (room.status === 'playing' && room.game?.type === 'bomb' && room.game.holderId === player.id) nextBombHolder(room);
-    if (room.status === 'playing' && room.game?.type === 'cards' && room.game.phase === 'decide' && !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100 && !(player.id in room.game.choices)) {
-      room.game.choices[player.id] = false;
+    if (room.status === 'playing' && room.game?.type === 'bomb') {
+      const bombIndex = room.game.bombs.findIndex(bomb => bomb.holderId === player.id);
+      if (bombIndex >= 0) nextBombHolder(room, bombIndex);
+    }
+    if (room.status === 'playing' && room.game?.type === 'cards' && room.game.phase === 'decide' && !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) {
+      room.game.standing.add(player.id);
       finishCardChoices(room);
     }
     if (room.status === 'playing' && room.game?.type === 'stocks' && room.game.phase === 'trade') {
