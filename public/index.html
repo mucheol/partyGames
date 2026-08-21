@@ -60,6 +60,8 @@ button, input {font:inherit;}
 .lobbyPanel {width:100%; padding:30px; border:1px solid rgba(255,255,255,.85); border-radius:26px; background:rgba(255,255,255,.92); box-shadow:0 22px 55px rgba(68,39,133,.16), inset 0 1px 0 #fff; backdrop-filter:blur(14px);}
 .lobbyPanel h2 {font-size:22px; color:#2c1c50; margin:0 0 8px;}
 .lobbyIntro {font-size:14px; color:#666; margin:0 0 24px;}
+.savedNickname {display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; padding:10px 12px; border-radius:12px; background:#f2edff;}
+.savedNickname button {width:auto; min-height:36px; padding:8px 12px;}
 .lobbyForm label {display:block; font-family:NotoSansB, sans-serif; margin-bottom:8px;}
 .lobbyForm input {width:100%; height:54px; font-size:16px; color:#222; margin-bottom:14px; padding:0 16px; border:1px solid #d4cbea; border-radius:14px; background:#faf8ff; box-shadow:inset 0 2px 5px rgba(66,39,125,.04);}
 .lobbyForm input:focus {outline:3px solid rgba(118,85,245,.25); border-color:#7655f5;}
@@ -231,6 +233,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
     <section class="lobbyPanel" aria-labelledby="panelTitle">
       <h2 id="panelTitle">게임 참여</h2>
       <p class="lobbyIntro">닉네임과 전달받은 6자리 방 코드를 입력하세요.</p>
+      <div id="savedNickname" class="savedNickname" hidden><span></span><button id="changeNicknameButton" type="button">닉네임 변경</button></div>
       <form id="joinForm" class="lobbyForm">
         <label for="joinNickname">참가자 닉네임</label>
         <input id="joinNickname" name="nickname" maxlength="12" autocomplete="nickname" required>
@@ -297,6 +300,7 @@ const socket = io();
 const panel = document.querySelector('.lobbyPanel');
 const message = document.getElementById('message');
 const playerId = localStorage.partyPlayerId ||= crypto.randomUUID();
+let savedNickname = localStorage.partyNickname || '';
 let session = JSON.parse(localStorage.partySession || 'null');
 let room;
 let previousRound = 0;
@@ -565,6 +569,7 @@ async function enter(event, type) {
   }
   try {
     const result = await send(`room:${type}`, {...data, playerId});
+    saveNickname(data.nickname);
     room = result.room;
     session = {code:room.code};
     localStorage.partySession = JSON.stringify(session);
@@ -594,6 +599,7 @@ function configureGame(nickname, type, replay) {
     try {
       const result = await send(replay ? 'game:change' : 'room:create', replay ? {type, settings:values} : {nickname, playerId, gameType:type, settings:values});
       if (!replay) {
+        saveNickname(nickname);
         room = result.room;
         session = {code:room.code};
         localStorage.partySession = JSON.stringify(session);
@@ -606,6 +612,28 @@ function configureGame(nickname, type, replay) {
 function blockedNickname(value) {
   return value.normalize('NFKC').replace(/[^\p{L}]/gu, '').includes('무철');
 }
+
+function saveNickname(value) {
+  savedNickname = value.trim();
+  localStorage.partyNickname = savedNickname;
+  document.getElementById('joinNickname').value = savedNickname;
+  document.getElementById('createNickname').value = savedNickname;
+  const saved = document.getElementById('savedNickname');
+  saved.hidden = false;
+  saved.querySelector('span').textContent = `저장된 닉네임: ${savedNickname}`;
+}
+
+if (savedNickname) saveNickname(savedNickname);
+document.getElementById('changeNicknameButton').onclick = () => {
+  const nickname = prompt('새 닉네임을 입력하세요. (1~12자)', savedNickname);
+  if (nickname === null) return;
+  if (!nickname.trim() || nickname.trim().length > 12 || blockedNickname(nickname)) {
+    message.textContent = '사용할 수 없는 닉네임입니다. 1~12자의 다른 닉네임을 골라주세요.';
+    return;
+  }
+  saveNickname(nickname);
+  message.textContent = '닉네임을 변경했습니다.';
+};
 
 document.getElementById('openCreateButton').onclick = event => {
   event.currentTarget.hidden = true;
