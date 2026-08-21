@@ -22,7 +22,9 @@ test('경마는 전원 선택 후 무작위 진행과 결승 슬로모션을 거
     const result = waitFor(players[0], room => room.status === 'result' && room.game?.type === 'race');
     const startedAt = Date.now();
     await Promise.all([emit(players[0], 'race:choose', {racerId:'turtle'}), emit(players[1], 'race:choose', {racerId:'worm'})]);
-    assert.equal((await finale).game.phase, 'finale');
+    const finaleRoom = await finale;
+    assert.equal(finaleRoom.game.phase, 'finale');
+    assert.ok(Math.max(...Object.values(finaleRoom.game.racePositions)) - Math.min(...Object.values(finaleRoom.game.racePositions)) <= 4);
     const finished = await result;
     assert.ok(Date.now() - startedAt >= 100);
     assert.ok(finished.game.raceWinner);

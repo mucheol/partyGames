@@ -32,7 +32,7 @@ const randomBetween = (minimum, maximum) => randomInt(minimum, maximum + 1);
 const randomCard = () => randomBetween(1, 100);
 const randomStockChange = country => country === 'KR' ? randomBetween(-3000, 3000) / 100 : randomBetween(-9900, 30000) / 100;
 const marketRevealMs = require.main === module ? 3000 : 30;
-const raceTiming = require.main === module ? {start:700, normal:320, finale:650} : {start:5, normal:2, finale:4};
+const raceTiming = require.main === module ? {start:700, normal:320, finale:400} : {start:5, normal:2, finale:4};
 const raceDuration = require.main === module ? 10_000 : 100;
 const stockFeeRate = 0.001;
 const stockList = [
@@ -266,8 +266,10 @@ function raceStep(room) {
     const distance = incident === 'backward' ? -randomBetween(4, 8) : incident === 'boost' ? randomBetween(5, 7) : ['stopped', 'flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 2) : randomBetween(2, 4);
     room.game.racePositions[racer.id] = Math.min(slow ? 98 : 84, Math.max(0, room.game.racePositions[racer.id] + distance));
   });
-  const leader = Math.max(...Object.values(room.game.racePositions));
-  if (!slow && (leader >= 82 || room.game.raceEndsAt - Date.now() <= raceDuration / 4)) room.game.phase = 'finale';
+  if (!slow && room.game.raceEndsAt - Date.now() <= raceDuration / 5) {
+    shuffle(racers).sort((a, b) => room.game.racePositions[a.id] - room.game.racePositions[b.id]).forEach((racer, index) => room.game.racePositions[racer.id] = 90 + index);
+    room.game.phase = 'finale';
+  }
   if (Date.now() >= room.game.raceEndsAt) {
     const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
     room.game.raceWinner = winner;
