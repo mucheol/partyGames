@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { readdirSync } = require('node:fs');
 const { join } = require('node:path');
-const { blockedNickname, roomCode, shuffle, validNickname } = require('../server');
+const { blockedNickname, gameSettings, roomCode, shuffle, validNickname } = require('../server');
 
 test('방 코드와 닉네임 경계를 검증한다', () => {
   assert.match(roomCode(), /^[A-Z2-9]{6}$/);
@@ -26,4 +26,9 @@ test('금지 닉네임의 숫자와 기호 우회를 차단한다', () => {
 
 test('돼지 동작 이미지 40개를 제공한다', () => {
   assert.equal(readdirSync(join(__dirname, '..', 'public', 'assets')).filter(file => file.startsWith('pig-')).length, 40);
+});
+
+test('게임 설정값을 허용 범위로 제한한다', () => {
+  assert.deepEqual(gameSettings('character', {winnerCount:'9'}), {winnerCount:'random'});
+  assert.deepEqual(gameSettings('bomb', {duration:'30-60', stackPenalty:true}), {duration:'30-60', stackPenalty:true});
 });

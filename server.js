@@ -18,7 +18,19 @@ const httpServer = createServer((request, response) => {
 const io = new Server(httpServer);
 const rooms = new Map();
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const pigPoses = ['pig-mascot.png', 'pig-peek.png', 'pig-run.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-tipsy.png', 'pig-dizzy.png', 'pig-moonwalk.png', 'pig-slide.png', 'pig-cartwheel.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-parachute.png', 'pig-superhero.png', 'pig-skates.png', 'pig-banana.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-spy.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-umbrella.png', 'pig-rocket.png', 'pig-magician.png', 'pig-ghost.png', 'pig-detective.png', 'pig-king.png', 'pig-cowboy.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'];
+const pigScenes = {
+  peek:['pig-peek.png', 'pig-spy.png', 'pig-detective.png', 'pig-ghost.png'],
+  pop:['pig-mascot.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-dizzy.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-magician.png', 'pig-king.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'],
+  run:['pig-run.png', 'pig-tipsy.png', 'pig-moonwalk.png', 'pig-slide.png', 'pig-cartwheel.png', 'pig-parachute.png', 'pig-superhero.png', 'pig-skates.png', 'pig-banana.png', 'pig-umbrella.png', 'pig-rocket.png', 'pig-cowboy.png']
+};
+
+function gameSettings(type, input = {}) {
+  if (type === 'character') {
+    const winnerCount = ['1', '2', '3', 'random'].includes(String(input.winnerCount)) ? String(input.winnerCount) : 'random';
+    return {winnerCount};
+  }
+  return {duration:input.duration === '30-60' ? '30-60' : '15-30', stackPenalty:Boolean(input.stackPenalty)};
+}
 
 function roomCode() {
   let code;
@@ -45,8 +57,8 @@ function blockedNickname(value) {
 }
 
 function publicRoom(room) {
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
-  return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
+  return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
 function emitRoom(room) {
@@ -58,7 +70,8 @@ function characterStep(room, stepsLeft) {
   const ids = [...room.players.values()].filter(player => player.connected).map(player => player.id);
   if (!ids.length) return;
   if (stepsLeft === 0) {
-    const winnerCount = Math.min(ids.length, 1 + Math.floor(Math.random() * Math.min(3, ids.length)));
+    const configured = room.settings.winnerCount;
+    const winnerCount = Math.min(ids.length, configured === 'random' ? 1 + Math.floor(Math.random() * Math.min(3, ids.length)) : Number(configured));
     room.game.phase = 'finale';
     room.game.activeIds = [];
     room.game.winnerIds = shuffle(ids).slice(0, winnerCount);
@@ -72,15 +85,19 @@ function characterStep(room, stepsLeft) {
   }
   const split = stepsLeft <= 4 && stepsLeft >= 2 && ids.length > 1;
   room.game.activeIds = shuffle(ids).slice(0, split ? 2 : 1);
-  room.game.move = stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : ['peekLeft', 'peekRight', 'pop', 'run'][Math.floor(Math.random() * 4)];
-  room.game.pose = room.game.move.startsWith('peek') ? 'pig-peek.png' : room.game.move === 'run' ? 'pig-run.png' : pigPoses[Math.floor(Math.random() * pigPoses.length)];
+  const sceneType = ['peek', 'pop', 'run'][Math.floor(Math.random() * 3)];
+  room.game.move = stepsLeft === 6 ? 'fakeout' : stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : sceneType === 'peek' ? (Math.random() < .5 ? 'peekLeft' : 'peekRight') : sceneType;
+  const scenePoses = pigScenes[sceneType];
+  room.game.posesById = Object.fromEntries(room.game.activeIds.map(id => [id, scenePoses[Math.floor(Math.random() * scenePoses.length)]]));
+  room.game.pose = room.game.posesById[room.game.activeIds[0]];
+  room.game.duration = 700 + stepsLeft * 35;
   room.game.round += 1;
   emitRoom(room);
   room.timer = setTimeout(() => {
     room.game.activeIds = [];
     emitRoom(room);
     room.timer = setTimeout(() => characterStep(room, stepsLeft - 1), 280 + Math.floor(Math.random() * 320));
-  }, 1150 + Math.floor(Math.random() * 300));
+  }, room.game.duration);
 }
 
 function nextBombHolder(room) {
@@ -90,16 +107,25 @@ function nextBombHolder(room) {
   const previous = room.game.holderId;
   if (room.game.queue.length > 1 && room.game.queue[0] === previous) room.game.queue.push(room.game.queue.shift());
   room.game.holderId = room.game.queue.shift();
+  room.game.lastPass = previous ? {fromId:previous, toId:room.game.holderId} : null;
   room.game.round += 1;
+}
+
+function queueGame(room, type) {
+  clearTimeout(room.timer);
+  room.status = 'countdown';
+  room.game = {type, phase:'countdown', startsAt:Date.now() + 3200, activeIds:[], winnerIds:[], round:0};
+  emitRoom(room);
+  room.timer = setTimeout(() => startGame(room, type), 3200);
 }
 
 function startGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'playing';
-  room.game = {type, phase:'playing', move:null, pose:null, activeIds:[], winnerIds:[], holderId:null, queue:[], round:0};
+  room.game = {type, phase:'playing', startsAt:Date.now(), move:null, pose:null, posesById:{}, duration:1000, activeIds:[], winnerIds:[], holderId:null, lastPass:null, queue:[], round:0};
   emitRoom(room);
   if (type === 'character') {
-    room.timer = setTimeout(() => characterStep(room, 10 + Math.floor(Math.random() * 5)), 1800);
+    room.timer = setTimeout(() => characterStep(room, 12 + Math.floor(Math.random() * 5)), 900);
   } else {
     nextBombHolder(room);
     emitRoom(room);
@@ -109,17 +135,17 @@ function startGame(room, type) {
       room.game.phase = 'result';
       room.game.winnerIds = [room.game.holderId];
       emitRoom(room);
-    }, 15_000 + Math.floor(Math.random() * 15_001));
+    }, room.settings.duration === '30-60' ? 30_000 + Math.floor(Math.random() * 30_001) : 15_000 + Math.floor(Math.random() * 15_001));
   }
 }
 
 io.on('connection', socket => {
-  socket.on('room:create', ({nickname, playerId, gameType}, done) => {
+  socket.on('room:create', ({nickname, playerId, gameType, settings}, done) => {
     if (blockedNickname(nickname)) return done({error:'해당 닉네임은 사용할 수 없습니다. 다른 닉네임을 골라주세요.'});
     if (!validNickname(nickname) || typeof playerId !== 'string') return done({error:'닉네임은 1~12자로 입력해주세요.'});
     if (!['character', 'bomb'].includes(gameType)) return done({error:'게임을 선택해주세요.'});
     const code = roomCode();
-    const room = {code, status:'lobby', hostId:playerId, selectedGame:gameType, players:new Map(), game:null, timer:null};
+    const room = {code, status:'lobby', hostId:playerId, selectedGame:gameType, settings:gameSettings(gameType, settings), players:new Map(), game:null, timer:null};
     room.players.set(playerId, {id:playerId, nickname:nickname.trim(), ready:true, connected:true, penaltyUntil:0, socketId:socket.id});
     rooms.set(code, room);
     socket.join(code);
@@ -169,7 +195,7 @@ io.on('connection', socket => {
     if (!room || room.hostId !== socket.data.playerId) return done({error:'방장만 시작할 수 있습니다.'});
     const players = [...room.players.values()];
     if (players.length < 2 || players.some(player => !player.ready || !player.connected)) return done({error:'2명 이상 접속하고 모두 준비해야 합니다.'});
-    startGame(room, room.selectedGame);
+    queueGame(room, room.selectedGame);
     done({ok:true});
   });
 
@@ -186,7 +212,7 @@ io.on('connection', socket => {
     const room = rooms.get(socket.data.code);
     const player = room?.players.get(socket.data.playerId);
     if (!room || !player || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderId === player.id) return done({error:'패널티를 적용할 수 없습니다.'});
-    player.penaltyUntil = Date.now() + 1000;
+    player.penaltyUntil = room.settings.stackPenalty ? Math.max(Date.now(), player.penaltyUntil || 0) + 1000 : Date.now() + 1000;
     emitRoom(room);
     setTimeout(() => emitRoom(room), 1050).unref();
     done({ok:true});
@@ -201,17 +227,28 @@ io.on('connection', socket => {
       room.game = null;
       emitRoom(room);
     } else {
-      startGame(room, room.selectedGame);
+      queueGame(room, room.selectedGame);
     }
     done({ok:true});
   });
 
-  socket.on('game:change', ({type}, done) => {
+  socket.on('game:change', ({type, settings}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'choosing') return done({error:'게임을 변경할 수 없습니다.'});
     if (!['character', 'bomb'].includes(type)) return done({error:'지원하지 않는 게임입니다.'});
     room.selectedGame = type;
-    startGame(room, type);
+    room.settings = gameSettings(type, settings);
+    queueGame(room, type);
+    done({ok:true});
+  });
+
+  socket.on('game:abort', (_, done) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.hostId !== socket.data.playerId || !['countdown', 'playing'].includes(room.status)) return done({error:'게임을 종료할 수 없습니다.'});
+    clearTimeout(room.timer);
+    room.status = 'lobby';
+    room.game = null;
+    emitRoom(room);
     done({ok:true});
   });
 
@@ -235,4 +272,4 @@ io.on('connection', socket => {
 
 if (require.main === module) httpServer.listen(process.env.PORT || 3000, '0.0.0.0', () => console.log(`http://localhost:${process.env.PORT || 3000}`));
 
-module.exports = { blockedNickname, httpServer, io, roomCode, shuffle, validNickname };
+module.exports = { blockedNickname, gameSettings, httpServer, io, roomCode, shuffle, validNickname };

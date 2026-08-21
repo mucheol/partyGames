@@ -59,18 +59,20 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .gameThumbnail {display:block; flex:0 0 72px; width:72px; height:72px; object-fit:contain; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
 .gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:420px; overflow:hidden; text-align:center; border-radius:16px; background:radial-gradient(circle at 50% 40%, #ffffff 0, #f4ecff 52%, #e4d6ff 100%);}
 .gameStage.penalty {background:radial-gradient(circle at 50% 40%, #ff8c8c 0, #d51f35 68%, #840016 100%); animation:penaltyFlash .2s linear 5;}
+.gameStage.exploded {background:radial-gradient(circle at 50% 40%, #fff1a6 0, #ff7448 52%, #7b0011 100%); animation:explosionShake .55s ease-out both;}
 .penaltyWarning {font-family:NotoSansB, sans-serif; font-size:14px; color:#b3261e; margin:16px 0 0;}
 .gameStage.penalty .penaltyWarning, .gameStage.penalty .suspense {color:#fff;}
 .mascotScene {position:relative; width:100%; height:300px; overflow:hidden;}
 .pig {position:absolute; left:50%; top:50%; width:230px; height:230px; object-fit:contain; filter:drop-shadow(0 18px 14px rgba(98,47,96,.24)); transform:translate(-50%, -50%);}
-.pig.peekLeft {animation:peekLeft 1.05s ease-in-out both;}
-.pig.peekRight {animation:peekRight 1.05s ease-in-out both;}
-.pig.pop {animation:pigPop .95s cubic-bezier(.2,1.5,.4,1) both;}
-.pig.run {animation:pigRun 1.05s ease-in both;}
-.pig.split:first-child {animation:splitLeft 1s ease-in-out both;}
-.pig.split:last-child {animation:splitRight 1s ease-in-out both;}
-.pig.merge:first-child {animation:mergeLeft 1s ease-in-out both;}
-.pig.merge:last-child {animation:mergeRight 1s ease-in-out both;}
+.pig.peekLeft {animation:peekLeft var(--moveDuration) ease-in-out both;}
+.pig.peekRight {animation:peekRight var(--moveDuration) ease-in-out both;}
+.pig.pop {animation:pigPop var(--moveDuration) cubic-bezier(.2,1.5,.4,1) both;}
+.pig.run {animation:pigRun var(--moveDuration) ease-in both;}
+.pig.fakeout {animation:fakeout var(--moveDuration) ease-in-out both;}
+.pig.split:first-child {animation:splitLeft var(--moveDuration) ease-in-out both;}
+.pig.split:last-child {animation:splitRight var(--moveDuration) ease-in-out both;}
+.pig.merge:first-child {animation:mergeLeft var(--moveDuration) ease-in-out both;}
+.pig.merge:last-child {animation:mergeRight var(--moveDuration) ease-in-out both;}
 .pigFinale {width:290px; height:290px; object-fit:contain; animation:finalePop 1.2s cubic-bezier(.2,1.4,.4,1) both; filter:drop-shadow(0 20px 18px rgba(98,47,96,.24));}
 .bomb {width:230px; height:230px; object-fit:contain; animation:shake .16s linear infinite; filter:drop-shadow(0 20px 18px rgba(45,24,15,.28));}
 .suspense {font-family:NotoSansB, sans-serif; font-size:30px; color:#7655f5; animation:pulse .7s ease-in-out infinite alternate;}
@@ -80,10 +82,23 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .resultActions {display:flex; width:100%; gap:10px;}
 .resultActions button {flex:1;}
 .resultActions .secondaryButton {color:#7655f5; border:2px solid #7655f5; background:#fff;}
+.topUtility {position:fixed; left:16px; top:max(14px, env(safe-area-inset-top)); display:flex; gap:8px; z-index:100;}
+.utilityButton {width:42px; min-height:42px; font-size:18px; padding:0; border:1px solid rgba(255,255,255,.45); border-radius:50%; background:rgba(41,24,74,.78); backdrop-filter:blur(8px);}
+.abortButton {width:auto; min-height:40px; font-size:13px; margin-top:16px; padding:0 16px; background:#403655;}
+.countdownNumber {font-family:NotoSansB, sans-serif; font-size:96px; color:#7655f5; animation:countdownPop .7s ease-out both;}
+.passNotice {font-family:NotoSansB, sans-serif; font-size:14px; color:#7655f5; margin-bottom:12px;}
+.gameSettings {padding:14px; margin-bottom:16px; border-radius:12px; background:#f6f4fc;}
+.gameSettings label {display:block; margin-bottom:10px;}
+.gameSettings select {width:100%; height:46px; padding:0 10px; border:1px solid #c9c3da; border-radius:10px; background:#fff;}
+.helpDialog {max-width:360px; width:calc(100% - 40px); padding:24px; border:0; border-radius:18px;}
+.helpDialog::backdrop {background:rgba(20,12,35,.72);}
+.helpDialog h2 {margin-top:0;}
+.helpDialog li {margin-bottom:10px;}
 @keyframes peekLeft {0%,100% {transform:translate(-135%, -50%) rotate(14deg);} 35%,65% {transform:translate(-78%, -50%) rotate(8deg);}}
 @keyframes peekRight {0%,100% {transform:translate(35%, -50%) rotate(-14deg) scaleX(-1);} 35%,65% {transform:translate(-22%, -50%) rotate(-8deg) scaleX(-1);}}
 @keyframes pigPop {0% {transform:translate(-50%, -30%) scale(0); opacity:0;} 35% {transform:translate(-50%, -50%) scale(1.15); opacity:1;} 80% {transform:translate(-50%, -50%) scale(1);} 100% {transform:translate(-50%, -70%) scale(0); opacity:0;}}
 @keyframes pigRun {0% {transform:translate(-50%, -50%) scale(.2); opacity:0;} 25% {transform:translate(-50%, -50%) scale(1); opacity:1;} 100% {transform:translate(90%, -55%) scale(.75) rotate(12deg); opacity:0;}}
+@keyframes fakeout {0% {transform:translate(-50%, -50%) scale(0); opacity:0;} 30%,65% {transform:translate(-50%, -50%) scale(1.18); opacity:1; filter:drop-shadow(0 0 28px #ffd84d);} 100% {transform:translate(100%, -60%) scale(.55) rotate(22deg); opacity:0;}}
 @keyframes splitLeft {0% {transform:translate(-50%, -50%) scale(.9);} 100% {transform:translate(-95%, -50%) scale(.72);}}
 @keyframes splitRight {0% {transform:translate(-50%, -50%) scale(.9);} 100% {transform:translate(-5%, -50%) scale(.72) scaleX(-1);}}
 @keyframes mergeLeft {0% {transform:translate(-95%, -50%) scale(.72);} 100% {transform:translate(-50%, -50%) scale(.9);}}
@@ -92,6 +107,8 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 @keyframes pulse {from {transform:scale(.94); opacity:.65;} to {transform:scale(1.04); opacity:1;}}
 @keyframes finalePop {0% {transform:scale(.3) rotate(-8deg); opacity:0;} 45% {transform:scale(1.12) rotate(4deg); opacity:1;} 100% {transform:scale(1); opacity:1;}}
 @keyframes penaltyFlash {0%,100% {filter:brightness(1);} 50% {filter:brightness(1.45);}}
+@keyframes countdownPop {0% {transform:scale(.3); opacity:0;} 70% {transform:scale(1.2); opacity:1;} 100% {transform:scale(1); opacity:1;}}
+@keyframes explosionShake {0%,100% {transform:translate(0);} 20% {transform:translate(-10px, 6px) rotate(-2deg);} 40% {transform:translate(9px, -7px) rotate(2deg);} 60% {transform:translate(-6px, 4px);} 80% {transform:translate(4px, -3px);}}
 @media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense {animation:none;}}
 </style>
 </head>
@@ -100,6 +117,10 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 <div class="pageOutWrap partyLobby">
   <div class="cl_subVisual" aria-hidden="true"></div>
   <button id="homeButton" class="homeButton" type="button" aria-label="홈으로 이동">⌂ 홈</button>
+  <nav class="topUtility" aria-label="게임 설정">
+    <button id="soundButton" class="utilityButton" type="button" aria-label="소리 끄기">🔊</button>
+    <button id="helpButton" class="utilityButton" type="button" aria-label="게임 방법 보기">?</button>
+  </nav>
   <div class="cl_breadcrumb" role="navigation" aria-label="현재 위치">HOME / 파티 게임</div>
   <div class="cl_pageTitle">파티 게임</div>
   <main id="content" class="contentWrap">
@@ -126,6 +147,14 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
   </main>
   <div class="fullContentWrap"></div>
 </div>
+<dialog id="helpDialog" class="helpDialog">
+  <h2>게임 방법</h2>
+  <ul>
+    <li><strong>돼지 술래잡기:</strong> 여러 화면을 오가는 돼지가 마지막 당첨자를 선택합니다.</li>
+    <li><strong>폭탄 돌리기:</strong> 폭탄이 보일 때만 넘기세요. 없는 화면을 누르면 1초간 잠깁니다.</li>
+  </ul>
+  <button id="closeHelpButton" type="button">확인</button>
+</dialog>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
@@ -137,14 +166,20 @@ let room;
 let previousRound = 0;
 let audioContext;
 let tickTimer;
+let countdownTimer;
+let soundEnabled = localStorage.partySound !== 'off';
+const pigAssets = ['pig-mascot.png', 'pig-peek.png', 'pig-run.png', 'pig-fireworks.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-tipsy.png', 'pig-dizzy.png', 'pig-moonwalk.png', 'pig-slide.png', 'pig-cartwheel.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-parachute.png', 'pig-superhero.png', 'pig-skates.png', 'pig-banana.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-spy.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-umbrella.png', 'pig-rocket.png', 'pig-magician.png', 'pig-ghost.png', 'pig-detective.png', 'pig-king.png', 'pig-cowboy.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'];
+
+pigAssets.forEach(file => { const image = new Image(); image.src = `/assets/${file}`; });
 
 function unlockAudio() {
+  if (!soundEnabled) return;
   audioContext ||= new AudioContext();
   if (audioContext.state === 'suspended') audioContext.resume();
 }
 
 function tick() {
-  if (!audioContext) return;
+  if (!audioContext || !soundEnabled) return;
   const oscillator = audioContext.createOscillator();
   const gain = audioContext.createGain();
   oscillator.frequency.value = 880;
@@ -159,10 +194,28 @@ function syncBombSound() {
   const shouldTick = room?.status === 'playing' && room.game?.type === 'bomb' && room.game.holderId === playerId;
   clearInterval(tickTimer);
   tickTimer = null;
-  if (shouldTick && audioContext) {
-    tick();
-    tickTimer = setInterval(tick, 620);
+  if (shouldTick && audioContext && soundEnabled) {
+    const tickLoop = () => {
+      tick();
+      const elapsed = Date.now() - (room.game.startsAt || Date.now());
+      tickTimer = setTimeout(tickLoop, Math.max(240, 650 - Math.floor(elapsed / 80)));
+    };
+    tickLoop();
   }
+}
+
+function explosionSound() {
+  if (!audioContext || !soundEnabled) return;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = 'sawtooth';
+  oscillator.frequency.setValueAtTime(180, audioContext.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(45, audioContext.currentTime + .45);
+  gain.gain.setValueAtTime(.3, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + .5);
+  oscillator.connect(gain).connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + .5);
 }
 
 function send(event, data) {
@@ -175,14 +228,29 @@ function escapeHtml(value) {
   return span.innerHTML;
 }
 
+function addAbortControl(isHost) {
+  if (!isHost) return;
+  panel.insertAdjacentHTML('beforeend', '<button id="abortButton" class="abortButton" type="button">게임 종료</button>');
+  document.getElementById('abortButton').onclick = async () => {
+    if (confirm('게임을 종료하고 대기실로 돌아갈까요?')) await send('game:abort', {});
+  };
+}
+
 function render() {
+  clearTimeout(countdownTimer);
   const me = room.players.find(player => player.id === playerId);
   const isHost = room.hostId === playerId;
+  if (room.status === 'countdown') {
+    const count = Math.max(1, Math.ceil((room.game.startsAt - Date.now()) / 1000));
+    panel.innerHTML = `<div class="gameStage"><p class="gameHint">곧 시작합니다</p><strong class="countdownNumber">${count}</strong></div>`;
+    addAbortControl(isHost);
+    countdownTimer = setTimeout(render, 150);
+    return;
+  }
   if (room.status === 'choosing') {
-    panel.innerHTML = isHost ? `<h2>다른 게임 선택</h2><p class="lobbyIntro">바로 이어서 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-change-game="character"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>도망치는 돼지의 마지막 선택을 기다려요.</span></button><button type="button" data-change-game="bomb"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>10~20초 사이 누군가의 화면에서 폭발해요.</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="suspense">방장이 다른 게임을 고르고 있어요.</p></div>';
+    panel.innerHTML = isHost ? `<h2>다른 게임 선택</h2><p class="lobbyIntro">바로 이어서 플레이할 게임을 골라주세요.</p><div class="gameChoice"><button type="button" data-change-game="character"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>도망치는 돼지의 마지막 선택을 기다려요.</span></button><button type="button" data-change-game="bomb"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>설정한 시간 사이 누군가의 화면에서 폭발해요.</span></button></div><p id="message" class="message" role="alert"></p>` : '<div class="gameStage"><p class="suspense">방장이 다른 게임을 고르고 있어요.</p></div>';
     panel.querySelectorAll('[data-change-game]').forEach(button => button.onclick = async () => {
-      try { await send('game:change', {type:button.dataset.changeGame}); }
-      catch (error) { document.getElementById('message').textContent = error.message; }
+      configureGame(null, button.dataset.changeGame, true);
     });
     return;
   }
@@ -195,12 +263,19 @@ function render() {
         panel.innerHTML = '<div class="gameStage"><img class="pigFinale" src="/assets/pig-fireworks.png" alt="폭죽을 터뜨리는 돼지"></div>';
       } else {
         const pair = ['split', 'merge'].includes(room.game.move);
-        panel.innerHTML = `<div class="gameStage"><p class="gameHint">돼지가 누굴 선택할까요?!</p><div class="mascotScene">${active ? `<img class="pig ${room.game.move}" src="/assets/${room.game.pose}" alt="장난꾸러기 돼지">${pair ? `<img class="pig ${room.game.move}" src="/assets/${room.game.pose}" alt="">` : ''}` : ''}</div>${active ? '' : '<p class="gameHint">쉿! 다른 화면을 살펴보세요.</p>'}</div>`;
+        const pose = room.game.posesById[playerId] || room.game.pose;
+        panel.innerHTML = `<div class="gameStage"><p class="gameHint">돼지가 누굴 선택할까요?!</p><div class="mascotScene">${active ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="장난꾸러기 돼지">${pair ? `<img class="pig ${room.game.move}" style="--moveDuration:${room.game.duration}ms" src="/assets/${pose}" alt="">` : ''}` : ''}</div>${active ? (room.game.move === 'fakeout' ? '<p class="gameHint">당첨…인 줄 알았지?!</p>' : '') : '<p class="gameHint">쉿! 다른 화면을 살펴보세요.</p>'}</div>`;
       }
+      addAbortControl(isHost);
     } else {
-      panel.innerHTML = `<div id="bombStage" class="gameStage ${penalized ? 'penalty' : ''}"><p class="gameHint">${holdingBomb ? '째깍째깍' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? `<img class="bomb" src="/assets/bomb.png" alt="불붙은 폭탄"><button id="passButton" type="button" ${penalized ? 'disabled' : ''}>${penalized ? '1초간 멈춤!' : '폭탄 넘기기!'}</button>` : '<p class="suspense">두근두근…</p><p class="penaltyWarning">폭탄이 없을 때 누르면 1초간 멈춥니다</p>'}</div>`;
+      const from = room.players.find(player => player.id === room.game.lastPass?.fromId)?.nickname;
+      const to = room.players.find(player => player.id === room.game.lastPass?.toId)?.nickname;
+      const passNotice = from && to ? `${escapeHtml(from)} → ${escapeHtml(to)}` : '폭탄이 출발했습니다!';
+      const turn = ((room.game.round - 1) % room.players.length) + 1;
+      panel.innerHTML = `<div id="bombStage" class="gameStage ${penalized ? 'penalty' : ''}"><p class="passNotice">${passNotice} · ${turn}/${room.players.length}</p><p class="gameHint">${holdingBomb ? '째깍째깍' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? `<img class="bomb" src="/assets/bomb.png" alt="불붙은 폭탄"><button id="passButton" type="button" ${penalized ? 'disabled' : ''}>${penalized ? '1초간 멈춤!' : '폭탄 넘기기!'}</button>` : '<p class="suspense">두근두근…</p><p class="penaltyWarning">폭탄이 없을 때 누르면 1초간 멈춥니다</p>'}</div>`;
       document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
       if (!holdingBomb) document.getElementById('bombStage').onclick = () => send('game:mistake', {}).catch(() => {});
+      addAbortControl(isHost);
     }
     return;
   }
@@ -208,6 +283,7 @@ function render() {
     const winners = room.players.filter(player => room.game.winnerIds.includes(player.id));
     const mine = winners.some(player => player.id === playerId);
     panel.innerHTML = `<div class="gameStage"><div class="resultIcon" role="img" aria-label="결과">${room.game.type === 'bomb' ? '💥' : '🎉'}</div><h2>${mine ? '바로 당신입니다!' : (room.game.type === 'bomb' ? '폭탄 당첨자' : '최종 당첨자')}</h2><p class="resultNames">${winners.map(player => escapeHtml(player.nickname)).join(', ')}</p>${isHost ? '<div class="resultActions"><button id="resetButton" type="button">같은 게임 다시 하기</button><button id="changeButton" class="secondaryButton" type="button">다른 게임 하기</button></div>' : '<p class="gameHint">방장이 다음 게임을 준비하고 있어요.</p>'}</div>`;
+    if (room.game.type === 'bomb') panel.querySelector('.gameStage').classList.add('exploded');
     if (mine) panel.querySelector('h2').textContent = room.game.type === 'bomb' ? '펑 당첨!' : '당첨자!';
     document.getElementById('resetButton')?.addEventListener('click', () => send('game:reset', {mode:'same'}));
     document.getElementById('changeButton')?.addEventListener('click', () => send('game:reset', {mode:'choose'}));
@@ -241,15 +317,29 @@ async function enter(event, type) {
 function chooseGame(nickname) {
   panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="돼지 술래잡기"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>화면 사이로 도망치는 돼지가 마지막 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
   panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
-    if (!confirm(`${button.dataset.title} 게임으로 방을 만들까요?`)) return;
-    try {
-      const result = await send('room:create', {nickname, playerId, gameType:button.dataset.game});
-      room = result.room;
-      session = {code:room.code};
-      localStorage.partySession = JSON.stringify(session);
-      render();
-    } catch (error) { document.getElementById('message').textContent = error.message; }
+    configureGame(nickname, button.dataset.game, false);
   });
+}
+
+function configureGame(nickname, type, replay) {
+  const title = type === 'character' ? '돼지 술래잡기' : '폭탄 돌리기';
+  const settings = type === 'character' ? '<label for="winnerCount">당첨자 수</label><select id="winnerCount" name="winnerCount"><option value="random">1~3명 무작위</option><option value="1">1명</option><option value="2">2명</option><option value="3">3명</option></select>' : '<label for="bombDuration">폭발 시간</label><select id="bombDuration" name="duration"><option value="15-30">15~30초</option><option value="30-60">30~60초</option></select><label><input name="stackPenalty" type="checkbox"> 오터치할 때마다 패널티 누적</label>';
+  panel.innerHTML = `<h2>${title} 설정</h2><form id="settingsForm"><div class="gameSettings">${settings}</div><button type="submit">${replay ? '이 게임 시작하기' : '이 설정으로 방 만들기'}</button></form><p id="message" class="message" role="alert"></p>`;
+  document.getElementById('settingsForm').onsubmit = async event => {
+    event.preventDefault();
+    if (!confirm(`${title}을(를) 시작할까요?`)) return;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    values.stackPenalty = new FormData(event.currentTarget).has('stackPenalty');
+    try {
+      const result = await send(replay ? 'game:change' : 'room:create', replay ? {type, settings:values} : {nickname, playerId, gameType:type, settings:values});
+      if (!replay) {
+        room = result.room;
+        session = {code:room.code};
+        localStorage.partySession = JSON.stringify(session);
+        render();
+      }
+    } catch (error) { document.getElementById('message').textContent = error.message; }
+  };
 }
 
 function blockedNickname(value) {
@@ -279,8 +369,28 @@ document.getElementById('homeButton').onclick = () => {
   socket.disconnect();
   location.href = '/';
 };
+const soundButton = document.getElementById('soundButton');
+function renderSoundButton() {
+  soundButton.textContent = soundEnabled ? '🔊' : '🔇';
+  soundButton.setAttribute('aria-label', soundEnabled ? '소리 끄기' : '소리 켜기');
+}
+renderSoundButton();
+soundButton.onclick = () => {
+  soundEnabled = !soundEnabled;
+  localStorage.partySound = soundEnabled ? 'on' : 'off';
+  if (soundEnabled) unlockAudio();
+  syncBombSound();
+  renderSoundButton();
+};
+const helpDialog = document.getElementById('helpDialog');
+document.getElementById('helpButton').onclick = () => helpDialog.showModal();
+document.getElementById('closeHelpButton').onclick = () => helpDialog.close();
 document.addEventListener('pointerdown', unlockAudio, {once:true});
 socket.on('room:updated', updatedRoom => {
+  if (room?.status === 'playing' && updatedRoom.status === 'result' && updatedRoom.game?.type === 'bomb') {
+    explosionSound();
+    navigator.vibrate?.([180, 60, 240]);
+  }
   if (updatedRoom.game?.round !== previousRound && (updatedRoom.game?.holderId === playerId || updatedRoom.game?.activeIds.includes(playerId))) navigator.vibrate?.([80, 40, 120]);
   previousRound = updatedRoom.game?.round || 0;
   room = updatedRoom;

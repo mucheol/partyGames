@@ -26,6 +26,8 @@ test('10명이 같은 방에서 준비하고 게임을 시작한다', async () =
 
     const started = await emit(clients[0], 'room:start', {});
     assert.equal(started.ok, true);
+    const aborted = await emit(clients[0], 'game:abort', {});
+    assert.equal(aborted.ok, true);
   } finally {
     clients.forEach(socket => socket.disconnect());
     await new Promise(resolve => io.close(resolve));
