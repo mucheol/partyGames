@@ -56,7 +56,8 @@ button, input {font:inherit;}
 .partyLobby .contentWrap {position:relative; width:100%; max-width:720px; z-index:1; margin:0 auto; padding:0 24px;}
 .partyLobby .fullContentWrap {width:100%;}
 .homeButton {position:fixed; right:16px; top:max(14px, env(safe-area-inset-top)); width:auto; min-height:42px; z-index:100; font-size:14px; padding:0 16px; border:1px solid rgba(255,255,255,.45); border-radius:22px; background:rgba(41,24,74,.78); backdrop-filter:blur(8px);}
-.watermarkImage {position:fixed; right:90px; top:max(10px, env(safe-area-inset-top)); width:50px; height:50px; z-index:100; object-fit:cover; border:2px solid rgba(255,255,255,.82); border-radius:50%; background:#fff8e8; box-shadow:0 5px 15px rgba(41,24,74,.25);}
+.watermarkButton {position:fixed; right:90px; top:max(10px, env(safe-area-inset-top)); width:50px; height:50px; min-height:50px; z-index:100; padding:0; border:2px solid rgba(255,255,255,.82); border-radius:50%; background:#fff8e8; box-shadow:0 5px 15px rgba(41,24,74,.25);}
+.watermarkImage {display:block; width:100%; height:100%; object-fit:cover; border-radius:50%;}
 .lobbyPanel {width:100%; padding:30px; border:1px solid rgba(255,255,255,.85); border-radius:26px; background:rgba(255,255,255,.92); box-shadow:0 22px 55px rgba(68,39,133,.16), inset 0 1px 0 #fff; backdrop-filter:blur(14px);}
 .lobbyPanel h2 {font-size:22px; color:#2c1c50; margin:0 0 8px;}
 .lobbyIntro {font-size:14px; color:#666; margin:0 0 24px;}
@@ -211,7 +212,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .partyLobby .cl_pageTitle {font-size:26px; margin-bottom:18px; padding:3px 20px 0;}
 .partyLobby .contentWrap {padding:0 16px;}
 .lobbyPanel {padding:24px 20px; border-radius:22px;}
-.watermarkImage {right:88px; top:max(12px, env(safe-area-inset-top)); width:44px; height:44px;}
+.watermarkButton {right:88px; top:max(12px, env(safe-area-inset-top)); width:44px; height:44px; min-height:44px;}
 .homeGameList {flex-direction:column;}
 .homeGameList li, .homeGameList li:last-child {width:100%;}
 }
@@ -223,7 +224,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 <div class="pageOutWrap partyLobby">
   <div class="cl_subVisual" aria-hidden="true"></div>
   <button id="homeButton" class="homeButton" type="button" aria-label="홈으로 이동">⌂ 홈</button>
-  <img class="watermarkImage" src="/assets/softm-watermark.png" alt="softM 워터마크">
+  <button id="watermarkButton" class="watermarkButton" type="button" aria-label="무철짱 메시지 보기"><img class="watermarkImage" src="/assets/softm-watermark.png" alt=""></button>
   <nav class="topUtility" aria-label="게임 설정">
     <button id="soundButton" class="utilityButton" type="button" aria-label="소리 끄기">🔊</button>
     <button id="helpButton" class="utilityButton" type="button" aria-label="게임 방법 보기">?</button>
@@ -681,6 +682,7 @@ document.getElementById('homeButton').onclick = () => {
   socket.disconnect();
   location.href = '/';
 };
+document.getElementById('watermarkButton').onclick = () => alert('무철짱!');
 const soundButton = document.getElementById('soundButton');
 function renderSoundButton() {
   soundButton.textContent = soundEnabled ? '🔊' : '🔇';
