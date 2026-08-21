@@ -19,6 +19,7 @@ const io = new Server(httpServer);
 const rooms = new Map();
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const gameTypes = ['character', 'bomb', 'cards'];
+const randomCard = () => 1 + Math.floor(Math.random() * 100);
 const pigScenes = {
   peek:['pig-peek.png', 'pig-spy.png', 'pig-detective.png', 'pig-ghost.png'],
   pop:['pig-mascot.png', 'pig-beer.png', 'pig-shot.png', 'pig-cheers.png', 'pig-pour.png', 'pig-dizzy.png', 'pig-disco.png', 'pig-selfie.png', 'pig-hide.png', 'pig-dj.png', 'pig-karaoke.png', 'pig-drum.png', 'pig-star.png', 'pig-bow.png', 'pig-sleep.png', 'pig-jump.png', 'pig-juggle.png', 'pig-bottle.png', 'pig-magician.png', 'pig-king.png', 'pig-weights.png', 'pig-yoga.png', 'pig-sneeze.png'],
@@ -59,7 +60,11 @@ function blockedNickname(value) {
 }
 
 function publicRoom(room, viewerId) {
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, myCards:room.game.cardsById?.[viewerId] || [], myChoice:room.game.choices?.[viewerId] ?? null, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, rankings:room.game.phase === 'ranking' ? room.game.rankings : []} : null;
+  const myCards = room.game?.cardsById?.[viewerId] || [];
+  const maySeeWaiting = room.game?.standing?.has(viewerId) || room.game?.choices?.[viewerId] === false || myCards.reduce((sum, card) => sum + card, 0) > 100;
+  const cardEligible = room.game?.cardsById ? [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) : [];
+  const waitingNames = maySeeWaiting ? cardEligible.filter(player => !(player.id in room.game.choices)).map(player => player.nickname) : [];
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : []} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
@@ -122,10 +127,20 @@ function queueGame(room, type) {
 }
 
 function finishCardChoices(room) {
-  if (room.game?.type !== 'cards' || room.game.phase !== 'decide' || Object.keys(room.game.choices).length < room.players.size) return;
-  room.players.forEach(player => {
-    if (room.game.choices[player.id]) room.game.cardsById[player.id].push(room.game.deck.pop());
+  if (room.game?.type !== 'cards' || room.game.phase !== 'decide') return;
+  const eligible = [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100);
+  if (eligible.some(player => !(player.id in room.game.choices))) return;
+  eligible.forEach(player => {
+    if (room.game.choices[player.id]) room.game.cardsById[player.id].push(randomCard());
+    else room.game.standing.add(player.id);
   });
+  const remaining = eligible.filter(player => room.game.choices[player.id] && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100);
+  if (remaining.length) {
+    room.game.choices = {};
+    room.game.round += 1;
+    emitRoom(room);
+    return;
+  }
   room.game.phase = 'reveal';
   room.game.revealAt = Date.now() + 3000;
   emitRoom(room);
@@ -162,10 +177,10 @@ function startGame(room, type) {
     }, room.settings.duration === '30-60' ? 30_000 + Math.floor(Math.random() * 30_001) : 15_000 + Math.floor(Math.random() * 15_001));
   } else {
     room.game.phase = 'decide';
-    room.game.deck = shuffle(Array.from({length:100}, (_, index) => index + 1));
     room.game.cardsById = {};
     room.game.choices = {};
-    room.players.forEach(player => room.game.cardsById[player.id] = [room.game.deck.pop()]);
+    room.game.standing = new Set();
+    room.players.forEach(player => room.game.cardsById[player.id] = [randomCard()]);
     emitRoom(room);
   }
 }
@@ -252,6 +267,8 @@ io.on('connection', socket => {
   socket.on('cards:choose', ({take}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.status !== 'playing' || room.game?.type !== 'cards' || room.game.phase !== 'decide') return done({error:'지금은 카드를 선택할 수 없습니다.'});
+    const cards = room.game.cardsById[socket.data.playerId];
+    if (room.game.standing.has(socket.data.playerId) || cards.reduce((sum, card) => sum + card, 0) > 100) return done({error:'이미 선택을 마쳤습니다.'});
     if (!(socket.data.playerId in room.game.choices)) room.game.choices[socket.data.playerId] = Boolean(take);
     emitRoom(room);
     finishCardChoices(room);
@@ -302,7 +319,7 @@ io.on('connection', socket => {
       if (nextHost) { room.hostId = nextHost.id; nextHost.ready = true; }
     }
     if (room.status === 'playing' && room.game?.type === 'bomb' && room.game.holderId === player.id) nextBombHolder(room);
-    if (room.status === 'playing' && room.game?.type === 'cards' && room.game.phase === 'decide' && !(player.id in room.game.choices)) {
+    if (room.status === 'playing' && room.game?.type === 'cards' && room.game.phase === 'decide' && !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100 && !(player.id in room.game.choices)) {
       room.game.choices[player.id] = false;
       finishCardChoices(room);
     }

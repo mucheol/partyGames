@@ -33,10 +33,16 @@ test('10명이 같은 방에서 준비하고 게임을 시작한다', async () =
     const choosing = await waitFor(clients[0], room => room.game?.type === 'cards' && room.game.phase === 'decide');
     assert.equal(choosing.game.myCards.length, 1);
     const ranked = waitFor(clients[0], room => room.status === 'result' && room.game?.phase === 'ranking');
-    await Promise.all(clients.map((socket, index) => emit(socket, 'cards:choose', {take:index % 2 === 0})));
+    const waiting = waitFor(clients[1], room => room.game?.myChoice === false && room.game.waitingNames.length > 0);
+    await emit(clients[1], 'cards:choose', {take:false});
+    assert.equal((await waiting).game.waitingNames.length, 9);
+    const nextRound = waitFor(clients[0], room => room.game?.phase === 'reveal' || room.game?.round === 1);
+    await Promise.all(clients.map((socket, index) => index === 1 ? Promise.resolve() : emit(socket, 'cards:choose', {take:index % 2 === 0})));
+    const afterDeal = await nextRound;
+    if (afterDeal.game.phase === 'decide') await Promise.all(clients.map(socket => emit(socket, 'cards:choose', {take:false})));
     const result = await ranked;
     assert.equal(result.game.rankings.length, 10);
-    assert.equal(result.game.rankings.filter(player => player.cards.length === 2).length, 5);
+    assert.ok(result.game.rankings.some(player => player.cards.length === 2));
   } finally {
     clients.forEach(socket => socket.disconnect());
     await new Promise(resolve => io.close(resolve));

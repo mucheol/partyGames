@@ -101,8 +101,8 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .helpDialog h2 {margin-top:0;}
 .helpDialog li {margin-bottom:10px;}
 .helpDialog p {line-height:1.6; white-space:pre-line;}
-.cardHand {display:flex; justify-content:center; gap:12px; margin-bottom:22px;}
-.numberCard {display:flex; justify-content:center; align-items:center; width:112px; height:160px; font-family:NotoSansB, sans-serif; font-size:48px; color:#7655f5; border:4px solid #7655f5; border-radius:16px; background:#fff; box-shadow:0 12px 24px rgba(74,47,140,.16);}
+.cardHand {display:flex; justify-content:center; flex-wrap:wrap; gap:8px; width:100%; margin-bottom:22px;}
+.numberCard {display:flex; justify-content:center; align-items:center; width:76px; height:108px; font-family:NotoSansB, sans-serif; font-size:32px; color:#7655f5; border:3px solid #7655f5; border-radius:12px; background:#fff; box-shadow:0 8px 16px rgba(74,47,140,.16);}
 .cardChoices {display:flex; width:100%; gap:10px;}
 .cardChoices button {flex:1; font-size:20px;}
 .rankingList {width:100%; margin:0 0 22px; padding:0; list-style:none;}
@@ -267,7 +267,7 @@ function addAbortControl(isHost) {
 const gameDescriptions = {
   character:['돼지 술래잡기', '돼지가 참가자들의 화면을 무작위로 오갑니다.\n마지막에 돼지가 나타난 1~3명이 당첨됩니다.'],
   bomb:['폭탄 돌리기', '내 화면에 폭탄이 왔을 때 다음 사람에게 넘기세요.\n제한 시간이 끝날 때 폭탄을 가진 사람이 당첨됩니다.'],
-  cards:['100 카드 승부', '1~100 카드 한 장을 확인하고 추가 카드를 받을지 동시에 선택합니다.\n합계가 100을 넘으면 탈락, 넘지 않은 사람 중 높은 순서로 순위가 결정됩니다.']
+  cards:['100 카드 승부', '1~100 카드에서 원하는 만큼 계속 추가로 받을 수 있습니다.\n합계가 100을 넘으면 탈락하고, 남은 전원이 그만 받으면 높은 순서로 순위가 결정됩니다.']
 };
 
 function addGameInfoButtons() {
@@ -329,7 +329,14 @@ function render() {
     } else {
       const cards = room.game.myCards.map(card => `<span class="numberCard">${card}</span>`).join('');
       const chosen = room.game.myChoice !== null;
-      panel.innerHTML = `<div class="gameStage"><p class="gameHint">내 카드</p><div class="cardHand">${cards}</div>${room.game.phase === 'reveal' ? `<p class="suspense">추가 카드를 공개합니다!</p><p class="gameHint">3초 뒤 전체 순위 공개</p>` : `<h2>한 장 더 받을까요?</h2><p class="gameHint">${room.game.choiceCount}/${room.players.length}명 선택 완료</p><div class="cardChoices"><button type="button" data-card-choice="true" ${chosen ? 'disabled' : ''}>O 받기</button><button type="button" data-card-choice="false" ${chosen ? 'disabled' : ''}>X 그대로</button></div>${chosen ? '<p class="gameHint">다른 참가자의 선택을 기다리는 중…</p>' : ''}`}</div>`;
+      const total = room.game.myCards.reduce((sum, card) => sum + card, 0);
+      const stopped = room.game.myStanding || room.game.myChoice === false;
+      const waiting = room.game.waitingNames.length ? `아직 선택 전: ${room.game.waitingNames.map(escapeHtml).join(', ')}` : '모두 선택했습니다.';
+      let action = `<h2>한 장 더 받을까요?</h2><p class="gameHint">현재 합계 ${total} · ${room.game.choiceCount}/${room.game.eligibleCount}명 선택</p><div class="cardChoices"><button type="button" data-card-choice="true" ${chosen ? 'disabled' : ''}>O 한 장 더</button><button type="button" data-card-choice="false" ${chosen ? 'disabled' : ''}>X 결과 보기</button></div>${chosen ? '<p class="gameHint">다른 참가자의 선택을 기다리는 중…</p>' : ''}`;
+      if (total > 100) action = `<p class="suspense">100 초과 · 탈락!</p><p class="gameHint">${waiting}</p>`;
+      else if (stopped) action = `<p class="suspense">${total}점 확정!</p><p class="gameHint">${waiting}</p>`;
+      if (room.game.phase === 'reveal') action = '<p class="suspense">모든 선택 완료!</p><p class="gameHint">3초 뒤 전체 순위 공개</p>';
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">내 카드 · 합계 ${total}</p><div class="cardHand">${cards}</div>${action}</div>`;
       panel.querySelectorAll('[data-card-choice]').forEach(button => button.onclick = () => send('cards:choose', {take:button.dataset.cardChoice === 'true'}).catch(() => {}));
       addAbortControl(isHost);
     }
