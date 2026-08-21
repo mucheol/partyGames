@@ -468,7 +468,7 @@ function render() {
     const penalized = (me.penaltyUntil || 0) > Date.now();
     if (room.game.type === 'character') {
       if (room.game.phase === 'finale') {
-        panel.innerHTML = '<div class="gameStage"><img class="pigFinale" src="/assets/pig-fireworks.png" alt="폭죽을 터뜨리는 돼지"></div>';
+        panel.innerHTML = room.game.winnerIds.includes(playerId) ? '<div class="gameStage"><img class="pigFinale" src="/assets/pig-fireworks.png" alt="폭죽을 터뜨리는 돼지"></div>' : '<div class="gameStage"><p class="suspense">당첨자를 확인하세요!</p></div>';
       } else {
         const pair = ['split', 'merge'].includes(room.game.move);
         const pose = room.game.posesById[playerId] || room.game.pose;
