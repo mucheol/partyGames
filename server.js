@@ -4,7 +4,7 @@ const { join } = require('node:path');
 const { Server } = require('socket.io');
 
 const httpServer = createServer((request, response) => {
-  if (request.url !== '/') return response.writeHead(404).end();
+  if (new URL(request.url, 'http://localhost').pathname !== '/') return response.writeHead(404).end();
   readFile(join(__dirname, 'public', 'index.html'), (error, data) => {
     if (error) response.writeHead(500).end('Server error');
     else response.writeHead(200, {'Content-Type':'text/html; charset=utf-8'}).end(data);
