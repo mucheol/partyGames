@@ -4,10 +4,12 @@ const { join } = require('node:path');
 const { Server } = require('socket.io');
 
 const httpServer = createServer((request, response) => {
-  if (new URL(request.url, 'http://localhost').pathname !== '/') return response.writeHead(404).end();
-  readFile(join(__dirname, 'public', 'index.html'), (error, data) => {
+  const path = new URL(request.url, 'http://localhost').pathname;
+  const files = {'/':['index.html', 'text/html; charset=utf-8'], '/assets/pig-mascot.png':['assets/pig-mascot.png', 'image/png'], '/assets/bomb.png':['assets/bomb.png', 'image/png']};
+  if (!files[path]) return response.writeHead(404).end();
+  readFile(join(__dirname, 'public', files[path][0]), (error, data) => {
     if (error) response.writeHead(500).end('Server error');
-    else response.writeHead(200, {'Content-Type':'text/html; charset=utf-8'}).end(data);
+    else response.writeHead(200, {'Content-Type':files[path][1], 'Cache-Control':path === '/' ? 'no-cache' : 'public, max-age=31536000, immutable'}).end(data);
   });
 });
 
@@ -36,7 +38,7 @@ function validNickname(value) {
 }
 
 function publicRoom(room) {
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, game, players:[...room.players.values()].map(({id, nickname, ready, connected}) => ({id, nickname, ready, connected}))};
 }
 
@@ -50,21 +52,27 @@ function characterStep(room, stepsLeft) {
   if (!ids.length) return;
   if (stepsLeft === 0) {
     const winnerCount = Math.min(ids.length, 1 + Math.floor(Math.random() * Math.min(3, ids.length)));
-    room.game.phase = 'result';
+    room.game.phase = 'finale';
     room.game.activeIds = [];
     room.game.winnerIds = shuffle(ids).slice(0, winnerCount);
-    room.status = 'result';
     emitRoom(room);
+    room.timer = setTimeout(() => {
+      room.game.phase = 'result';
+      room.status = 'result';
+      emitRoom(room);
+    }, 2400);
     return;
   }
-  room.game.activeIds = shuffle(ids).slice(0, stepsLeft === 4 && ids.length > 1 ? Math.min(2, ids.length) : 1);
+  const split = stepsLeft <= 4 && stepsLeft >= 2 && ids.length > 1;
+  room.game.activeIds = shuffle(ids).slice(0, split ? 2 : 1);
+  room.game.move = stepsLeft === 4 ? 'split' : stepsLeft === 1 ? 'merge' : ['peekLeft', 'peekRight', 'pop', 'run'][Math.floor(Math.random() * 4)];
   room.game.round += 1;
   emitRoom(room);
   room.timer = setTimeout(() => {
     room.game.activeIds = [];
     emitRoom(room);
-    room.timer = setTimeout(() => characterStep(room, stepsLeft - 1), 350 + Math.floor(Math.random() * 450));
-  }, 700 + Math.floor(Math.random() * 500));
+    room.timer = setTimeout(() => characterStep(room, stepsLeft - 1), 280 + Math.floor(Math.random() * 320));
+  }, 1150 + Math.floor(Math.random() * 300));
 }
 
 function nextBombHolder(room) {
@@ -80,10 +88,10 @@ function nextBombHolder(room) {
 function startGame(room, type) {
   clearTimeout(room.timer);
   room.status = 'playing';
-  room.game = {type, phase:'playing', activeIds:[], winnerIds:[], holderId:null, queue:[], round:0};
+  room.game = {type, phase:'playing', move:null, activeIds:[], winnerIds:[], holderId:null, queue:[], round:0};
   emitRoom(room);
   if (type === 'character') {
-    room.timer = setTimeout(() => characterStep(room, 10 + Math.floor(Math.random() * 5)), 1200);
+    room.timer = setTimeout(() => characterStep(room, 10 + Math.floor(Math.random() * 5)), 1800);
   } else {
     nextBombHolder(room);
     emitRoom(room);

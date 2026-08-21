@@ -54,18 +54,34 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .gameChoice button {display:flex; align-items:center; min-height:104px; text-align:left; padding:14px 18px;}
 .gameChoice strong {display:block; font-size:18px; margin-bottom:4px;}
 .gameChoice span {font-family:NotoSansR, sans-serif; font-size:13px; opacity:.9;}
-.gameThumbnail {display:flex; justify-content:center; align-items:center; flex:0 0 68px; height:68px; font-size:40px; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
-.gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:360px; text-align:center;}
-.character {font-size:104px; animation:pop .45s ease-in-out infinite alternate; filter:drop-shadow(0 14px 12px rgba(80,45,120,.22));}
-.character.clone::after {content:'👾'; display:inline-block; margin-left:-24px; animation:clone .45s ease-in-out infinite alternate;}
-.bomb {font-size:110px; animation:shake .16s linear infinite;}
+.gameThumbnail {display:block; flex:0 0 72px; width:72px; height:72px; object-fit:contain; margin-right:14px; border-radius:14px; background:rgba(255,255,255,.18);}
+.gameStage {display:flex; justify-content:center; align-items:center; flex-direction:column; min-height:420px; overflow:hidden; text-align:center; border-radius:16px; background:radial-gradient(circle at 50% 40%, #ffffff 0, #f4ecff 52%, #e4d6ff 100%);}
+.mascotScene {position:relative; width:100%; height:300px; overflow:hidden;}
+.pig {position:absolute; left:50%; top:50%; width:230px; height:230px; object-fit:contain; filter:drop-shadow(0 18px 14px rgba(98,47,96,.24)); transform:translate(-50%, -50%);}
+.pig.peekLeft {animation:peekLeft 1.05s ease-in-out both;}
+.pig.peekRight {animation:peekRight 1.05s ease-in-out both;}
+.pig.pop {animation:pigPop .95s cubic-bezier(.2,1.5,.4,1) both;}
+.pig.run {animation:pigRun 1.05s ease-in both;}
+.pig.split:first-child {animation:splitLeft 1s ease-in-out both;}
+.pig.split:last-child {animation:splitRight 1s ease-in-out both;}
+.pig.merge:first-child {animation:mergeLeft 1s ease-in-out both;}
+.pig.merge:last-child {animation:mergeRight 1s ease-in-out both;}
+.bomb {width:230px; height:230px; object-fit:contain; animation:shake .16s linear infinite; filter:drop-shadow(0 20px 18px rgba(45,24,15,.28));}
+.suspense {font-family:NotoSansB, sans-serif; font-size:30px; color:#7655f5; animation:pulse .7s ease-in-out infinite alternate;}
 .gameHint {font-size:16px; color:#666; margin-bottom:18px;}
 .resultIcon {font-size:88px; margin-bottom:16px;}
 .resultNames {font-family:NotoSansB, sans-serif; font-size:25px; color:#7655f5; margin-bottom:26px;}
-@keyframes pop {from {transform:translateY(8px) scale(.92) rotate(-5deg);} to {transform:translateY(-8px) scale(1.08) rotate(5deg);}}
-@keyframes clone {from {transform:translateX(-8px);} to {transform:translateX(16px);}}
+@keyframes peekLeft {0%,100% {transform:translate(-135%, -50%) rotate(14deg);} 35%,65% {transform:translate(-78%, -50%) rotate(8deg);}}
+@keyframes peekRight {0%,100% {transform:translate(35%, -50%) rotate(-14deg) scaleX(-1);} 35%,65% {transform:translate(-22%, -50%) rotate(-8deg) scaleX(-1);}}
+@keyframes pigPop {0% {transform:translate(-50%, -30%) scale(0); opacity:0;} 35% {transform:translate(-50%, -50%) scale(1.15); opacity:1;} 80% {transform:translate(-50%, -50%) scale(1);} 100% {transform:translate(-50%, -70%) scale(0); opacity:0;}}
+@keyframes pigRun {0% {transform:translate(-50%, -50%) scale(.2); opacity:0;} 25% {transform:translate(-50%, -50%) scale(1); opacity:1;} 100% {transform:translate(90%, -55%) scale(.75) rotate(12deg); opacity:0;}}
+@keyframes splitLeft {0% {transform:translate(-50%, -50%) scale(.9);} 100% {transform:translate(-95%, -50%) scale(.72);}}
+@keyframes splitRight {0% {transform:translate(-50%, -50%) scale(.9);} 100% {transform:translate(-5%, -50%) scale(.72) scaleX(-1);}}
+@keyframes mergeLeft {0% {transform:translate(-95%, -50%) scale(.72);} 100% {transform:translate(-50%, -50%) scale(.9);}}
+@keyframes mergeRight {0% {transform:translate(-5%, -50%) scale(.72) scaleX(-1);} 100% {transform:translate(-50%, -50%) scale(.9) scaleX(-1); opacity:0;}}
 @keyframes shake {0%,100% {transform:rotate(-4deg);} 50% {transform:rotate(4deg) scale(1.04);}}
-@media(prefers-reduced-motion:reduce) {.character, .character.clone::after, .bomb {animation:none;}}
+@keyframes pulse {from {transform:scale(.94); opacity:.65;} to {transform:scale(1.04); opacity:1;}}
+@media(prefers-reduced-motion:reduce) {.pig, .bomb, .suspense {animation:none;}}
 </style>
 </head>
 <body>
@@ -105,6 +121,7 @@ const message = document.getElementById('message');
 const playerId = localStorage.partyPlayerId ||= crypto.randomUUID();
 let session = JSON.parse(localStorage.partySession || 'null');
 let room;
+let previousRound = 0;
 
 function send(event, data) {
   return new Promise((resolve, reject) => socket.emit(event, data, result => result.error ? reject(new Error(result.error)) : resolve(result)));
@@ -123,9 +140,14 @@ function render() {
     const active = room.game.activeIds.includes(playerId);
     const holdingBomb = room.game.holderId === playerId;
     if (room.game.type === 'character') {
-      panel.innerHTML = `<div class="gameStage"><p class="gameHint">캐릭터가 어디에서 나타날까요?</p>${active ? `<div class="character ${room.game.activeIds.length > 1 ? 'clone' : ''}" role="img" aria-label="캐릭터">👾</div>` : '<p class="gameStarted">다른 화면을 확인하세요!</p>'}</div>`;
+      if (room.game.phase === 'finale') {
+        panel.innerHTML = '<div class="gameStage"><p class="gameHint">돼지가 마지막으로 선택한 사람은…</p><p class="suspense">두구두구두구!</p></div>';
+      } else {
+        const pair = ['split', 'merge'].includes(room.game.move);
+        panel.innerHTML = `<div class="gameStage"><p class="gameHint">돼지가 어느 화면으로 도망갔을까요?</p><div class="mascotScene">${active ? `<img class="pig ${room.game.move}" src="/assets/pig-mascot.png" alt="장난꾸러기 돼지">${pair ? `<img class="pig ${room.game.move}" src="/assets/pig-mascot.png" alt="">` : ''}` : ''}</div>${active ? '' : '<p class="gameHint">쉿! 다른 화면을 살펴보세요.</p>'}</div>`;
+      }
     } else {
-      panel.innerHTML = `<div class="gameStage"><p class="gameHint">${holdingBomb ? '빨리 다음 사람에게 넘기세요!' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? '<div class="bomb" role="img" aria-label="폭탄">💣</div><button id="passButton" type="button">다음 사람에게 넘기기</button>' : '<p class="gameStarted">두근두근…</p>'}</div>`;
+      panel.innerHTML = `<div class="gameStage"><p class="gameHint">${holdingBomb ? '폭탄이 당신을 보고 있어요. 빨리 넘기세요!' : '폭탄이 이동 중이에요…'}</p>${holdingBomb ? '<img class="bomb" src="/assets/bomb.png" alt="불붙은 폭탄"><button id="passButton" type="button">폭탄 넘기기!</button>' : '<p class="suspense">째깍… 째깍…</p>'}</div>`;
       document.getElementById('passButton')?.addEventListener('click', async event => { event.currentTarget.disabled = true; try { await send('game:pass', {}); } catch (error) { event.currentTarget.disabled = false; } });
     }
     return;
@@ -159,7 +181,7 @@ async function enter(event, type) {
 }
 
 function chooseGame(nickname) {
-  panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="캐릭터 추첨"><span class="gameThumbnail" aria-hidden="true">👾</span><span><strong>캐릭터 추첨</strong>캐릭터가 화면을 옮겨 다니다 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><span class="gameThumbnail" aria-hidden="true">💣</span><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
+  panel.innerHTML = `<h2>게임 선택</h2><p class="lobbyIntro">만들 방에서 플레이할 게임을 선택하세요.</p><div class="gameChoice"><button type="button" data-game="character" data-title="돼지 술래잡기"><img class="gameThumbnail" src="/assets/pig-mascot.png" alt=""><span><strong>돼지 술래잡기</strong>화면 사이로 도망치는 돼지가 마지막 당첨자를 선택해요.</span></button><button type="button" data-game="bomb" data-title="폭탄 돌리기"><img class="gameThumbnail" src="/assets/bomb.png" alt=""><span><strong>폭탄 돌리기</strong>폭탄을 넘기다가 시간이 끝난 사람이 당첨돼요.</span></button></div><p id="message" class="message" role="alert" aria-live="polite"></p>`;
   panel.querySelectorAll('[data-game]').forEach(button => button.onclick = async () => {
     if (!confirm(`${button.dataset.title} 게임으로 방을 만들까요?`)) return;
     try {
@@ -175,7 +197,12 @@ function chooseGame(nickname) {
 document.getElementById('createForm').onsubmit = event => { event.preventDefault(); chooseGame(new FormData(event.currentTarget).get('nickname')); };
 document.getElementById('joinForm').onsubmit = event => enter(event, 'join');
 document.getElementById('roomCode').oninput = event => event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
-socket.on('room:updated', updatedRoom => { room = updatedRoom; render(); });
+socket.on('room:updated', updatedRoom => {
+  if (updatedRoom.game?.round !== previousRound && (updatedRoom.game?.holderId === playerId || updatedRoom.game?.activeIds.includes(playerId))) navigator.vibrate?.([80, 40, 120]);
+  previousRound = updatedRoom.game?.round || 0;
+  room = updatedRoom;
+  render();
+});
 socket.on('connect', async () => {
   if (!session?.code) return;
   try { room = (await send('room:resume', {...session, playerId})).room; render(); }
