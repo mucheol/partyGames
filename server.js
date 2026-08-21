@@ -131,7 +131,7 @@ function publicRoom(room, viewerId) {
   const maySeeWaiting = room.game?.standing?.has(viewerId) || myCards.reduce((sum, card) => sum + card, 0) > 100;
   const cardEligible = room.game?.cardsById ? [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) : [];
   const waitingNames = maySeeWaiting ? cardEligible.map(player => player.nickname) : [];
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, holderIds:room.game.holderIds || [], winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.standing?.size || 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : [], racers:room.game.racers || [], racePositions:room.game.racePositions || {}, raceEvents:room.game.raceEvents || {}, raceTick:room.game.raceTick || 0, myRacer:room.game.raceChoices?.[viewerId] || null, raceChoiceCount:room.game.raceChoices ? Object.keys(room.game.raceChoices).length : 0, raceWinner:room.game.raceWinner || null} : null;
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, holderIds:room.game.holderIds || [], winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.standing?.size || 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : [], racers:room.game.racers || [], racePositions:room.game.racePositions || {}, raceEvents:room.game.raceEvents || {}, raceTick:room.game.raceTick || 0, raceFinale:room.game.raceFinale || false, myRacer:room.game.raceChoices?.[viewerId] || null, raceChoiceCount:room.game.raceChoices ? Object.keys(room.game.raceChoices).length : 0, raceWinner:room.game.raceWinner || null} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
@@ -263,18 +263,18 @@ function raceStep(room) {
     room.game.raceEvents[racer.id] = incident;
     if (stopped) room.game.raceStops[racer.id] -= 1;
     if (incident === 'backward') room.game.raceStops[racer.id] = randomBetween(1, 2);
-    const distance = incident === 'backward' ? -randomBetween(4, 8) : incident === 'boost' ? randomBetween(5, 7) : ['stopped', 'flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 2) : randomBetween(2, 4);
-    room.game.racePositions[racer.id] = Math.min(slow ? 98 : 84, Math.max(0, room.game.racePositions[racer.id] + distance));
+    const distance = incident === 'backward' ? -randomBetween(4, 8) : incident === 'boost' ? randomBetween(6, 8) : ['stopped', 'flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 2) : randomBetween(4, 6);
+    room.game.racePositions[racer.id] = Math.min(98, Math.max(0, room.game.racePositions[racer.id] + distance));
   });
-  if (!slow && room.game.raceEndsAt - Date.now() <= raceDuration / 5) {
-    shuffle(racers).sort((a, b) => room.game.racePositions[a.id] - room.game.racePositions[b.id]).forEach((racer, index) => room.game.racePositions[racer.id] = 90 + index);
+  const leaders = Object.values(room.game.racePositions).sort((a, b) => b - a);
+  if (!slow && room.game.raceEndsAt - Date.now() <= raceDuration / 5 && leaders[0] >= 80 && leaders[0] - leaders[1] <= 6) {
     room.game.phase = 'finale';
+    room.game.raceFinale = true;
   }
   if (Date.now() >= room.game.raceEndsAt) {
     const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
     room.game.raceWinner = winner;
     room.game.winnerIds = [...room.players.values()].filter(player => room.game.raceChoices[player.id] === winner.id).map(player => player.id);
-    racers.forEach(racer => room.game.racePositions[racer.id] = racer.id === winner.id ? 100 : Math.min(98, room.game.racePositions[racer.id]));
     room.game.raceEvents = {};
     room.game.phase = 'finish';
     emitRoom(room);
@@ -295,6 +295,7 @@ function startRace(room) {
   room.game.raceEvents = {};
   room.game.raceStops = Object.fromEntries(racers.map(racer => [racer.id, 0]));
   room.game.raceEndsAt = Date.now() + raceDuration;
+  room.game.raceFinale = false;
   room.game.raceTick = 0;
   emitRoom(room);
   room.timer = setTimeout(() => raceStep(room), raceTiming.start);
