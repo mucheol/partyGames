@@ -321,7 +321,7 @@ function updateTradeEstimate() {
   const quantity = Math.max(0, Number(document.getElementById('tradeQuantity').value) || 0);
   const amount = stock.price * quantity;
   const fee = Math.round(amount * .001);
-  document.getElementById('tradeEstimate').textContent = `${quantity.toLocaleString('ko-KR')}주 · 거래금액 ${won(amount)}\n수수료 0.1% ${won(fee)}\n매수 필요금액 ${won(amount + fee)} · 매도 입금액 ${won(amount - fee)}`;
+  document.getElementById('tradeEstimate').textContent = `거래금액(수수료 포함) ${won(amount + fee)}`;
 }
 
 function addGameInfoButtons() {
