@@ -22,6 +22,12 @@ test('15명부터 폭탄이 두 개로 늘어난다', async () => {
     const room = await playing;
     assert.equal(room.game.holderIds.length, 2);
     assert.equal(new Set(room.game.holderIds).size, 2);
+    const freeIndex = room.players.findIndex(player => !room.game.holderIds.includes(player.id));
+    const penalized = waitFor(players[freeIndex], state => state.players.find(player => player.id === `bomb-${freeIndex}`).penaltyUntil > Date.now());
+    await emit(players[freeIndex], 'game:mistake', {});
+    await penalized;
+    const cleared = await waitFor(players[freeIndex], state => state.players.find(player => player.id === `bomb-${freeIndex}`).penaltyUntil === 0);
+    assert.equal(cleared.players.find(player => player.id === `bomb-${freeIndex}`).penaltyUntil, 0);
     await emit(players[0], 'game:abort', {});
   } finally {
     players.forEach(socket => socket.disconnect());

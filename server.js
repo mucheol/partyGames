@@ -416,7 +416,10 @@ io.on('connection', socket => {
     if (!room || !player || room.status !== 'playing' || room.game?.type !== 'bomb' || room.game.holderIds.includes(player.id)) return done({error:'패널티를 적용할 수 없습니다.'});
     player.penaltyUntil = room.settings.stackPenalty ? Math.max(Date.now(), player.penaltyUntil || 0) + 1000 : Date.now() + 1000;
     emitRoom(room);
-    setTimeout(() => emitRoom(room), 1050).unref();
+    setTimeout(() => {
+      if (player.penaltyUntil <= Date.now()) player.penaltyUntil = 0;
+      emitRoom(room);
+    }, Math.max(0, player.penaltyUntil - Date.now()) + 50).unref();
     done({ok:true});
   });
 
