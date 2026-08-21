@@ -33,6 +33,7 @@ const randomCard = () => randomBetween(1, 100);
 const randomStockChange = country => country === 'KR' ? randomBetween(-3000, 3000) / 100 : randomBetween(-9900, 30000) / 100;
 const marketRevealMs = require.main === module ? 3000 : 30;
 const raceTiming = require.main === module ? {start:700, normal:320, finale:650} : {start:5, normal:2, finale:4};
+const raceDuration = require.main === module ? 10_000 : 100;
 const stockFeeRate = 0.001;
 const stockList = [
   ['005930', '삼성전자', 'KR', '반도체'],
@@ -262,12 +263,12 @@ function raceStep(room) {
     room.game.raceEvents[racer.id] = incident;
     if (stopped) room.game.raceStops[racer.id] -= 1;
     if (incident === 'backward') room.game.raceStops[racer.id] = randomBetween(1, 2);
-    const distance = incident === 'backward' ? -randomBetween(7, 14) : incident === 'boost' ? randomBetween(12, 22) : ['stopped', 'flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 3) : randomBetween(1, 6);
-    room.game.racePositions[racer.id] = Math.min(slow ? 101 : 84, Math.max(0, room.game.racePositions[racer.id] + distance));
+    const distance = incident === 'backward' ? -randomBetween(4, 8) : incident === 'boost' ? randomBetween(5, 7) : ['stopped', 'flipped', 'sick', 'broken'].includes(incident) ? 0 : slow ? randomBetween(1, 2) : randomBetween(2, 4);
+    room.game.racePositions[racer.id] = Math.min(slow ? 98 : 84, Math.max(0, room.game.racePositions[racer.id] + distance));
   });
   const leader = Math.max(...Object.values(room.game.racePositions));
-  if (!slow && leader >= 82) room.game.phase = 'finale';
-  if (leader >= 100) {
+  if (!slow && (leader >= 82 || room.game.raceEndsAt - Date.now() <= raceDuration / 4)) room.game.phase = 'finale';
+  if (Date.now() >= room.game.raceEndsAt) {
     const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
     room.game.raceWinner = winner;
     room.game.winnerIds = [...room.players.values()].filter(player => room.game.raceChoices[player.id] === winner.id).map(player => player.id);
@@ -291,6 +292,7 @@ function startRace(room) {
   room.game.racePositions = Object.fromEntries(racers.map(racer => [racer.id, 0]));
   room.game.raceEvents = {};
   room.game.raceStops = Object.fromEntries(racers.map(racer => [racer.id, 0]));
+  room.game.raceEndsAt = Date.now() + raceDuration;
   room.game.raceTick = 0;
   emitRoom(room);
   room.timer = setTimeout(() => raceStep(room), raceTiming.start);
