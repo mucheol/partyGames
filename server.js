@@ -19,16 +19,20 @@ const httpServer = createServer((request, response) => {
 const io = new Server(httpServer);
 const rooms = new Map();
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const gameTypes = ['character', 'bomb', 'cards', 'stocks'];
+const gameTypes = ['character', 'bomb', 'cards', 'stocks', 'race'];
+const racers = [
+  {id:'turtle', name:'번개 거북이', image:'racer-turtle.png'},
+  {id:'worm', name:'질주 지렁이', image:'racer-worm.png'},
+  {id:'human', name:'육상 인간', image:'racer-human.png'},
+  {id:'car', name:'꼬마 자동차', image:'racer-car.png'},
+  {id:'ufo', name:'초록 UFO', image:'racer-ufo.png'}
+];
 const random = maximum => randomInt(maximum);
 const randomBetween = (minimum, maximum) => randomInt(minimum, maximum + 1);
 const randomCard = () => randomBetween(1, 100);
-const randomStockChange = () => {
-  const ordinary = randomBetween(-8000, 8000) / 100;
-  if (random(100) >= 15) return ordinary;
-  return ordinary < 0 ? Math.max(-99, ordinary * randomBetween(2, 5)) : ordinary * randomBetween(2, 10);
-};
+const randomStockChange = country => country === 'KR' ? randomBetween(-3000, 3000) / 100 : randomBetween(-9900, 30000) / 100;
 const marketRevealMs = require.main === module ? 3000 : 30;
+const raceTiming = require.main === module ? {start:500, normal:220, finale:520} : {start:5, normal:2, finale:4};
 const stockFeeRate = 0.001;
 const stockList = [
   ['005930', '삼성전자', 'KR', '반도체'],
@@ -125,7 +129,7 @@ function publicRoom(room, viewerId) {
   const maySeeWaiting = room.game?.standing?.has(viewerId) || room.game?.choices?.[viewerId] === false || myCards.reduce((sum, card) => sum + card, 0) > 100;
   const cardEligible = room.game?.cardsById ? [...room.players.values()].filter(player => !room.game.standing.has(player.id) && room.game.cardsById[player.id].reduce((sum, card) => sum + card, 0) <= 100) : [];
   const waitingNames = maySeeWaiting ? cardEligible.filter(player => !(player.id in room.game.choices)).map(player => player.nickname) : [];
-  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : []} : null;
+  const game = room.game ? {type:room.game.type, phase:room.game.phase, move:room.game.move || null, pose:room.game.pose || null, posesById:room.game.posesById || {}, duration:room.game.duration || 1000, startsAt:room.game.startsAt || null, revealAt:room.game.revealAt || null, lastPass:room.game.lastPass || null, activeIds:room.game.activeIds || [], holderId:room.game.holderId || null, winnerIds:room.game.winnerIds || [], round:room.game.round || 0, day:room.game.day || 0, myCards, myChoice:room.game.choices?.[viewerId] ?? null, myStanding:room.game.standing?.has(viewerId) || false, choiceCount:room.game.choices ? Object.keys(room.game.choices).length : 0, eligibleCount:cardEligible.length, waitingNames, rankings:room.game.phase === 'ranking' ? room.game.rankings : [], markets:room.game.markets || [], myCash:room.game.cashById?.[viewerId] ?? 0, myHoldings:room.game.holdingsById?.[viewerId] || {}, stockReadyIds:[...(room.game.stockReady || [])], stockRankings:room.game.type === 'stocks' && room.game.phase === 'ranking' ? room.game.stockRankings : [], racers:room.game.racers || [], racePositions:room.game.racePositions || {}, myRacer:room.game.raceChoices?.[viewerId] || null, raceChoiceCount:room.game.raceChoices ? Object.keys(room.game.raceChoices).length : 0, raceWinner:room.game.raceWinner || null} : null;
   return {code:room.code, status:room.status, hostId:room.hostId, selectedGame:room.selectedGame, settings:room.settings, game, players:[...room.players.values()].map(({id, nickname, ready, connected, penaltyUntil = 0}) => ({id, nickname, ready, connected, penaltyUntil}))};
 }
 
@@ -229,7 +233,7 @@ function closeStockDay(room) {
   room.game.phase = 'market';
   room.game.stockReady.clear();
   room.game.markets.forEach(stock => {
-    stock.change = randomStockChange();
+    stock.change = randomStockChange(stock.country);
     stock.price = Math.max(100, Math.round(stock.price * (1 + stock.change / 100)));
     stock.history.push(stock.price);
   });
@@ -247,6 +251,32 @@ function closeStockDay(room) {
     }
     emitRoom(room);
   }, marketRevealMs);
+}
+
+function raceStep(room) {
+  if (room.status !== 'playing' || room.game?.type !== 'race') return;
+  const slow = room.game.phase === 'finale';
+  racers.forEach(racer => room.game.racePositions[racer.id] += slow ? randomBetween(1, 3) : randomBetween(2, 7));
+  const leader = Math.max(...Object.values(room.game.racePositions));
+  if (!slow && leader >= 82) room.game.phase = 'finale';
+  if (leader >= 100) {
+    const winner = shuffle(racers).sort((a, b) => room.game.racePositions[b.id] - room.game.racePositions[a.id])[0];
+    room.game.raceWinner = winner;
+    room.game.winnerIds = [...room.players.values()].filter(player => room.game.raceChoices[player.id] === winner.id).map(player => player.id);
+    room.game.phase = 'ranking';
+    room.status = 'result';
+    emitRoom(room);
+    return;
+  }
+  emitRoom(room);
+  room.timer = setTimeout(() => raceStep(room), room.game.phase === 'finale' ? raceTiming.finale : raceTiming.normal);
+}
+
+function startRace(room) {
+  room.game.phase = 'race';
+  room.game.racePositions = Object.fromEntries(racers.map(racer => [racer.id, 0]));
+  emitRoom(room);
+  room.timer = setTimeout(() => raceStep(room), raceTiming.start);
 }
 
 function startGame(room, type) {
@@ -273,7 +303,7 @@ function startGame(room, type) {
     room.game.standing = new Set();
     room.players.forEach(player => room.game.cardsById[player.id] = [randomCard()]);
     emitRoom(room);
-  } else {
+  } else if (type === 'stocks') {
     room.game.phase = 'trade';
     room.game.day = 1;
     room.game.markets = selectStocks().map(([symbol, name, country, sector]) => {
@@ -288,6 +318,11 @@ function startGame(room, type) {
       room.game.cashById[player.id] = 100_000_000;
       room.game.holdingsById[player.id] = {};
     });
+    emitRoom(room);
+  } else {
+    room.game.phase = 'choose';
+    room.game.racers = racers;
+    room.game.raceChoices = {};
     emitRoom(room);
   }
 }
@@ -415,6 +450,15 @@ io.on('connection', socket => {
     done({ok:true});
   });
 
+  socket.on('race:choose', ({racerId}, done) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.status !== 'playing' || room.game?.type !== 'race' || room.game.phase !== 'choose' || !racers.some(racer => racer.id === racerId)) return done({error:'지금은 선수를 선택할 수 없습니다.'});
+    room.game.raceChoices[socket.data.playerId] = racerId;
+    emitRoom(room);
+    if (Object.keys(room.game.raceChoices).length === room.players.size) startRace(room);
+    done({ok:true});
+  });
+
   socket.on('game:reset', ({mode}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'result') return done({error:'방장만 다시 시작할 수 있습니다.'});
@@ -466,6 +510,10 @@ io.on('connection', socket => {
     if (room.status === 'playing' && room.game?.type === 'stocks' && room.game.phase === 'trade') {
       room.game.stockReady.add(player.id);
       closeStockDay(room);
+    }
+    if (room.status === 'playing' && room.game?.type === 'race' && room.game.phase === 'choose' && !room.game.raceChoices[player.id]) {
+      room.game.raceChoices[player.id] = racers[random(racers.length)].id;
+      if (Object.keys(room.game.raceChoices).length === room.players.size) startRace(room);
     }
     emitRoom(room);
     const cleanupTimer = setTimeout(() => {

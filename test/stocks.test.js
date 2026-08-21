@@ -30,7 +30,10 @@ test('주식 게임은 보유 현금 내 주 단위 거래와 4일 결산을 처
     assert.match((await emit(players[0], 'stocks:trade', {symbol, side:'buy', quantity:1})).error, /보유 현금/);
     for (let day = 1; day <= 4; day++) {
       const next = waitFor(players[0], state => day === 4 ? state.status === 'result' : state.game?.type === 'stocks' && state.game.phase === 'trade' && state.game.day === day + 1);
+      const market = waitFor(players[0], state => state.game?.type === 'stocks' && state.game.phase === 'market' && state.game.day === day);
       await Promise.all(players.map(socket => emit(socket, 'stocks:ready', {ready:true})));
+      const closed = await market;
+      assert.ok(closed.game.markets.every(stock => stock.country === 'KR' ? Math.abs(stock.change) <= 30 : stock.change >= -99 && stock.change <= 300));
       room = await next;
       assert.equal(room.game.myCash, expectedCash);
       if (day === 1) {
