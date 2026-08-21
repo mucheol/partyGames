@@ -152,14 +152,21 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .tradeActions .sellButton {background:#1769d2;}
 .raceChoiceGrid {display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; width:100%;}
 .raceChoiceGrid button {min-height:150px; padding:8px;}
-.raceChoiceGrid img {display:block; width:100%; height:100px; object-fit:cover; margin-bottom:5px; border-radius:10px; mix-blend-mode:screen;}
+.raceChoiceGrid img {display:block; width:100%; height:100px; object-fit:contain; margin-bottom:5px; border-radius:10px; mix-blend-mode:screen;}
 .raceTrack {display:flex; flex-direction:column; gap:4px; width:100%; min-height:480px; padding:12px 20px 12px 8px; overflow:hidden; border-radius:16px; background:linear-gradient(90deg, #111827, #24304a); transition:transform .8s ease;}
 .raceTrack.finale {transform:scale(1.35) translate(-10%, 4%) skewY(-2deg); transform-origin:85% 50%;}
 .raceLane {position:relative; height:82px; border-bottom:2px dashed rgba(255,255,255,.25);}
 .raceLane::after {position:absolute; right:0; top:0; width:5px; height:100%; content:''; background:repeating-linear-gradient(#fff 0 8px, #111 8px 16px);}
-.raceObject {position:absolute; left:0; top:5px; width:82px; height:70px; object-fit:cover; border-radius:10px; mix-blend-mode:screen; transition:left .2s linear;}
+.raceObject {position:absolute; left:0; top:2px; width:88px; height:76px; object-fit:contain; border-radius:10px; mix-blend-mode:screen; transition:left .2s linear;}
 .raceTrack.finale .raceObject {transition-duration:.52s;}
 .raceLabel {position:absolute; left:4px; top:4px; z-index:2; font-family:NotoSansB, sans-serif; font-size:11px; color:#fff; text-shadow:0 1px 3px #000;}
+.raceObject.turtle {animation:turtleCrawl .48s ease-in-out infinite alternate;}
+.raceObject.worm {transform-origin:left center; animation:wormWiggle .34s ease-in-out infinite alternate;}
+.raceObject.human {animation:humanRun .25s ease-in-out infinite alternate;}
+.raceObject.car {animation:carRumble .13s linear infinite alternate;}
+.raceObject.ufo {animation:ufoHover .58s ease-in-out infinite alternate;}
+.raceLane.car::before {position:absolute; left:0; top:27px; width:55%; height:22px; content:''; opacity:.8; background:repeating-linear-gradient(0deg, transparent 0 5px, rgba(118,213,255,.8) 6px 8px, transparent 9px 13px); animation:windRush .28s linear infinite;}
+.raceTrack.finale .raceObject, .raceTrack.finale .raceLane.car::before {animation-duration:1s;}
 @keyframes peekLeft {0%,100% {transform:translate(-135%, -50%) rotate(14deg);} 35%,65% {transform:translate(-78%, -50%) rotate(8deg);}}
 @keyframes peekRight {0%,100% {transform:translate(35%, -50%) rotate(-14deg) scaleX(-1);} 35%,65% {transform:translate(-22%, -50%) rotate(-8deg) scaleX(-1);}}
 @keyframes pigPop {0% {transform:translate(-50%, -30%) scale(0); opacity:0;} 35% {transform:translate(-50%, -50%) scale(1.15); opacity:1;} 80% {transform:translate(-50%, -50%) scale(1);} 100% {transform:translate(-50%, -70%) scale(0); opacity:0;}}
@@ -175,7 +182,13 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 @keyframes penaltyFlash {0%,100% {filter:brightness(1);} 50% {filter:brightness(1.45);}}
 @keyframes countdownPop {0% {transform:scale(.3); opacity:0;} 70% {transform:scale(1.2); opacity:1;} 100% {transform:scale(1); opacity:1;}}
 @keyframes explosionShake {0%,100% {transform:translate(0);} 20% {transform:translate(-10px, 6px) rotate(-2deg);} 40% {transform:translate(9px, -7px) rotate(2deg);} 60% {transform:translate(-6px, 4px);} 80% {transform:translate(4px, -3px);}}
-@media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense {animation:none;}}
+@keyframes turtleCrawl {from {transform:translateY(3px) scaleX(.97) rotate(-2deg);} to {transform:translateY(-2px) scaleX(1.03) rotate(2deg);}}
+@keyframes wormWiggle {from {transform:translateY(5px) rotate(-5deg) skewX(-7deg);} to {transform:translateY(-4px) rotate(5deg) skewX(7deg);}}
+@keyframes humanRun {from {transform:translateY(5px) rotate(-3deg);} to {transform:translateY(-6px) rotate(3deg);}}
+@keyframes carRumble {from {transform:translate(0, 2px) rotate(-1deg);} to {transform:translate(2px, -1px) rotate(1deg);}}
+@keyframes ufoHover {from {transform:translateY(5px) rotate(-3deg);} to {transform:translateY(-7px) rotate(3deg); filter:drop-shadow(0 0 12px #61ffe0);}}
+@keyframes windRush {from {transform:translateX(-35px); opacity:0;} 45% {opacity:.9;} to {transform:translateX(95px); opacity:0;}}
+@media(prefers-reduced-motion:reduce) {.pig, .pigFinale, .bomb, .suspense, .raceObject, .raceLane.car::before {animation:none;}}
 </style>
 </head>
 <body>
@@ -477,7 +490,7 @@ function render() {
       panel.querySelectorAll('[data-racer]').forEach(button => button.onclick = () => send('race:choose', {racerId:button.dataset.racer}).catch(() => {}));
       addAbortControl(isHost);
     } else {
-      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.phase === 'finale' ? 'finale' : ''}">${room.game.racers.map(racer => `<div class="raceLane"><span class="raceLabel">${escapeHtml(racer.name)}</span><img class="raceObject" style="left:${Math.min(88, (room.game.racePositions[racer.id] || 0) * .88)}%" src="/assets/${racer.image}" alt="${escapeHtml(racer.name)}"></div>`).join('')}</div></div>`;
+      panel.innerHTML = `<div><p class="suspense">${room.game.phase === 'finale' ? '결승선 초근접! 슬로모션!' : '우당탕탕 출발!'}</p><div class="raceTrack ${room.game.phase === 'finale' ? 'finale' : ''}">${room.game.racers.map(racer => `<div class="raceLane ${racer.id}"><span class="raceLabel">${escapeHtml(racer.name)}</span><img class="raceObject ${racer.id}" style="left:${Math.min(86, (room.game.racePositions[racer.id] || 0) * .86)}%" src="/assets/${racer.image}" alt="${escapeHtml(racer.name)}"></div>`).join('')}</div></div>`;
       addAbortControl(isHost);
     }
     return;
