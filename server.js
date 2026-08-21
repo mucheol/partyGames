@@ -101,7 +101,7 @@ function startGame(room, type) {
       room.game.phase = 'result';
       room.game.winnerIds = [room.game.holderId];
       emitRoom(room);
-    }, 20_000 + Math.floor(Math.random() * 20_001));
+    }, 10_000 + Math.floor(Math.random() * 10_001));
   }
 }
 
@@ -171,11 +171,26 @@ io.on('connection', socket => {
     done({ok:true});
   });
 
-  socket.on('game:reset', (_, done) => {
+  socket.on('game:reset', ({mode}, done) => {
     const room = rooms.get(socket.data.code);
     if (!room || room.hostId !== socket.data.playerId || room.status !== 'result') return done({error:'방장만 다시 시작할 수 있습니다.'});
     clearTimeout(room.timer);
-    startGame(room, room.selectedGame);
+    if (mode === 'choose') {
+      room.status = 'choosing';
+      room.game = null;
+      emitRoom(room);
+    } else {
+      startGame(room, room.selectedGame);
+    }
+    done({ok:true});
+  });
+
+  socket.on('game:change', ({type}, done) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.hostId !== socket.data.playerId || room.status !== 'choosing') return done({error:'게임을 변경할 수 없습니다.'});
+    if (!['character', 'bomb'].includes(type)) return done({error:'지원하지 않는 게임입니다.'});
+    room.selectedGame = type;
+    startGame(room, type);
     done({ok:true});
   });
 
