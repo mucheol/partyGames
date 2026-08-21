@@ -121,7 +121,7 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .topUtility {position:fixed; left:16px; top:max(14px, env(safe-area-inset-top)); display:flex; gap:8px; z-index:100;}
 .utilityButton {width:42px; min-height:42px; font-size:18px; padding:0; border:1px solid rgba(255,255,255,.45); border-radius:50%; background:rgba(41,24,74,.78); backdrop-filter:blur(8px);}
 .abortButton {width:auto; min-height:40px; font-size:13px; margin-top:16px; padding:0 16px; background:#403655;}
-.countdownNumber {font-family:NotoSansB, sans-serif; font-size:96px; color:#7655f5; animation:countdownPop .7s ease-out both;}
+.countdownNumber {font-family:NotoSansB, sans-serif; font-size:clamp(32px, 10vw, 64px); color:#7655f5; white-space:nowrap; animation:countdownPop .7s ease-out both;}
 .passNotice {font-family:NotoSansB, sans-serif; font-size:14px; color:#7655f5; margin-bottom:12px;}
 .gameSettings {padding:14px; margin-bottom:16px; border-radius:12px; background:#f6f4fc;}
 .gameSettings label {display:block; margin-bottom:10px;}
@@ -178,6 +178,8 @@ button:disabled {background:#aaa4b8; cursor:not-allowed;}
 .raceTrack.finale .raceObject {transition-duration:.52s;}
 .raceLabel {position:absolute; left:4px; top:4px; z-index:2; font-family:NotoSansB, sans-serif; font-size:11px; color:#fff; text-shadow:0 1px 3px #000;}
 .raceObject.backward {transform:scaleX(-1);}
+.raceObject.stopped {transform:rotate(-8deg) scale(.92); filter:grayscale(.6);}
+.raceObject.boost {transform:rotate(-3deg) scale(1.08); filter:drop-shadow(-14px 0 8px #74d5ff);}
 .raceObject.flipped {transform:rotate(180deg);}
 .raceObject.sick {transform:rotate(12deg); filter:grayscale(.7);}
 .raceObject.broken {transform:rotate(-10deg); filter:saturate(.25);}
@@ -386,7 +388,7 @@ const gameDescriptions = {
   stocks:['랜덤 주식 투자', '1억원 현금으로 매 판 무작위 선정된 한국·미국 6종목을 거래합니다.\n보유 현금 안에서 주 단위로 사고팔며 설정한 3~7일 뒤 최종 자산 순위를 공개합니다. 실제 투자와 무관한 랜덤 게임입니다.'],
   race:['우당탕 경마', '거북이·지렁이·사람·자동차·UFO 중 우승할 선수를 선택합니다.\n모두 선택하면 완전 무작위 레이스가 시작됩니다.']
 };
-const raceIncidentLabels = {backward:'어디 가?! ↩', flipped:'데굴데굴!', sick:'아야…', broken:'고장! 🔧'};
+const raceIncidentLabels = {backward:'확 후진! ↩', stopped:'멈춰버림…', boost:'갑자기 폭주! ⚡', flipped:'데굴데굴!', sick:'아야…', broken:'고장! 🔧'};
 
 const won = value => `${Math.round(value).toLocaleString('ko-KR')}원`;
 
