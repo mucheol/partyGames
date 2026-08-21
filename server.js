@@ -29,6 +29,7 @@ const randomStockChange = () => {
   return ordinary < 0 ? Math.max(-99, ordinary * randomBetween(2, 5)) : ordinary * randomBetween(2, 10);
 };
 const marketRevealMs = require.main === module ? 3000 : 30;
+const stockFeeRate = 0.001;
 const stockList = [
   ['005930', '삼성전자', 'KR', '반도체'],
   ['000660', '에스케이하이닉스', 'KR', '메모리'],
@@ -390,14 +391,15 @@ io.on('connection', socket => {
     if (!stock || !['buy', 'sell'].includes(side) || !Number.isSafeInteger(quantity) || quantity < 1) return done({error:'거래 수량은 1주 이상 입력해주세요.'});
     const holdings = room.game.holdingsById[playerId];
     const amount = stock.price * quantity;
+    const fee = Math.round(amount * stockFeeRate);
     if (side === 'buy') {
-      if (amount > room.game.cashById[playerId]) return done({error:'보유 현금보다 많이 살 수 없습니다.'});
+      if (amount + fee > room.game.cashById[playerId]) return done({error:'수수료를 포함한 주문금액이 보유 현금을 넘습니다.'});
       holdings[symbol] = (holdings[symbol] || 0) + quantity;
-      room.game.cashById[playerId] -= amount;
+      room.game.cashById[playerId] -= amount + fee;
     } else {
       if (quantity > (holdings[symbol] || 0)) return done({error:'보유 주식보다 많이 팔 수 없습니다.'});
       holdings[symbol] -= quantity;
-      room.game.cashById[playerId] += amount;
+      room.game.cashById[playerId] += amount - fee;
     }
     emitRoom(room);
     done({ok:true});

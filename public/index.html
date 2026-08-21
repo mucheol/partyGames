@@ -319,7 +319,9 @@ function updateTradeEstimate() {
   const stock = room?.game?.markets?.find(item => item.symbol === selectedStockSymbol);
   if (!stock) return;
   const quantity = Math.max(0, Number(document.getElementById('tradeQuantity').value) || 0);
-  document.getElementById('tradeEstimate').textContent = `${quantity.toLocaleString('ko-KR')}주 · 예상 주문금액 ${won(stock.price * quantity)}`;
+  const amount = stock.price * quantity;
+  const fee = Math.round(amount * .001);
+  document.getElementById('tradeEstimate').textContent = `${quantity.toLocaleString('ko-KR')}주 · 거래금액 ${won(amount)}\n수수료 0.1% ${won(fee)}\n매수 필요금액 ${won(amount + fee)} · 매도 입금액 ${won(amount - fee)}`;
 }
 
 function addGameInfoButtons() {
@@ -400,7 +402,7 @@ function render() {
         const dailyProfit = shares * (stock.price - previousPrice);
         return `<button class="stockCard" type="button" data-stock="${stock.symbol}" ${room.game.phase !== 'trade' || ready ? 'disabled' : ''}><strong>${escapeHtml(stock.name)}</strong><span class="stockMeta">${stock.country === 'KR' ? '한국' : '미국'} · ${escapeHtml(stock.sector)}</span>${shares ? `<span class="holdingBadge">보유중 · ${shares.toLocaleString('ko-KR')}주</span>` : ''}<span class="stockPrice">${won(stock.price)}</span><span class="stockChange ${stock.change >= 0 ? 'up' : 'down'}">${stock.change >= 0 ? '▲' : '▼'} ${Math.abs(stock.change).toFixed(2)}%</span>${room.game.phase === 'market' && shares ? `<span class="stockProfit ${dailyProfit >= 0 ? 'up' : 'down'}">오늘 손익 ${dailyProfit >= 0 ? '+' : ''}${won(dailyProfit)}</span>` : ''}${stockChart(stock)}</button>`;
       }).join('');
-      panel.innerHTML = `<div class="stockDashboard"><h2>${room.game.day}일차 ${room.game.phase === 'market' ? '장 마감' : '투자'}</h2><p class="gameHint">실제 시세와 무관한 완전 무작위 게임 · 보유 현금 내 거래</p><div class="stockSummary"><span>총 자산<strong>${won(equity)}</strong></span><span>현금<strong>${won(room.game.myCash)}</strong></span><span>투자금<strong>${won(holdingsValue)}</strong></span></div><div class="stockGrid">${markets}</div>${room.game.phase === 'market' ? `<p class="suspense">${room.game.day === 4 ? '최종 결산 중!' : '시장이 움직였습니다!'}</p>` : `<button id="stockReadyButton" type="button">${ready ? '투자 완료 취소' : '투자 완료'}</button><p class="stockWaiting">완료 ${room.game.stockReadyIds.length}/${room.players.length}${readyNames ? ` · ${readyNames}` : ''}</p>`}</div>`;
+      panel.innerHTML = `<div class="stockDashboard"><h2>${room.game.day}일차 ${room.game.phase === 'market' ? '장 마감' : '투자'}</h2><p class="gameHint">실제 시세와 무관한 완전 무작위 게임 · 거래 수수료 0.1%</p><div class="stockSummary"><span>사용 가능 현금<strong>${won(room.game.myCash)}</strong></span><span>보유주식 평가액<strong>${won(holdingsValue)}</strong></span><span>총 평가자산<strong>${won(equity)}</strong></span></div><div class="stockGrid">${markets}</div>${room.game.phase === 'market' ? `<p class="suspense">${room.game.day === 4 ? '최종 결산 중!' : '시장이 움직였습니다!'}</p>` : `<button id="stockReadyButton" type="button">${ready ? '투자 완료 취소' : '투자 완료'}</button><p class="stockWaiting">완료 ${room.game.stockReadyIds.length}/${room.players.length}${readyNames ? ` · ${readyNames}` : ''}</p>`}</div>`;
       panel.querySelectorAll('[data-stock]').forEach(button => button.onclick = () => {
         selectedStockSymbol = button.dataset.stock;
         const stock = room.game.markets.find(item => item.symbol === selectedStockSymbol);
